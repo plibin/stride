@@ -179,7 +179,8 @@ void NonComplianceSeeder::SeedPools(std::shared_ptr<Population> pop, string nonC
 		}
 
 		// Set individuals belonging to pools to be non-compliant
-		for (auto pool: pop->CRefPoolSys().CRefPools(pooltype)) {
+		// FIXME pooltype for clustering may be different from pooltype for non-compliant actions!
+		for (auto pool: pop->CRefPoolSys().CRefPools(Id::Household)) {
 			const auto poolID = pool.GetId();
 			// Check if pool is in nonCompliantPools
 			if (find(nonCompliantPools.begin(), nonCompliantPools.end(), poolID) != nonCompliantPools.end()) {

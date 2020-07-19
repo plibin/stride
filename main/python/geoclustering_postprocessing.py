@@ -14,6 +14,7 @@ def get_experiment_ids(output_dir, scenario_name):
             experiment_ids.append(int(row["exp_id"]))
     return experiment_ids
 
+
 def get_new_cases_per_day(output_dir, scenario_name, exp_id, num_days):
     transmissions_file = os.path.join(output_dir, scenario_name, "exp" + "{:04}".format(exp_id), "contact_log.txt")
 
@@ -62,6 +63,7 @@ def get_num_non_compliers(output_dir, scenario_name, exp_id):
                 num_non_compliers += 1
     return num_non_compliers
 
+
 def get_num_non_compliers_by_age(output_dir, scenario_name, exp_id):
     max_age = 111
     by_age = {}
@@ -81,44 +83,63 @@ def get_num_non_compliers_by_age(output_dir, scenario_name, exp_id):
 def main(output_dir, scenario_names, scenario_display_names):
     if scenario_display_names == None:
         scenario_display_names = scenario_names
-    num_days = 150
-    base = datetime.datetime.strptime("2020-02-17", "%Y-%m-%d")
+    # FIXME get from config file?
+    num_days = 120
+    base = datetime.datetime.strptime("2020-08-31", "%Y-%m-%d")
     dates = [base + datetime.timedelta(days=x) for x in range(num_days)]
 
-    '''scenario_display_names = ["Baseline",
-                                "Geo-clustering \n+ no age distribution",
-                                "Geo-clustering \n+ age distribution",
-                                "Random non-compliers \n+ no age distribution",
-                                "Random non-compliers \n+ age distribution"]'''
     all_new_cases_per_day = {}
+    all_cumulative_cases_per_day = {}
     all_attack_rates = []
     all_nums_non_compliers = []
     all_nc_by_age = []
+
     for name in scenario_names:
         experiment_ids = get_experiment_ids(output_dir, name)
         with multiprocessing.Pool(processes=8) as pool:
             new_cases_per_day = pool.starmap(get_new_cases_per_day, [(output_dir, name, exp_id, num_days) for exp_id in experiment_ids])
+            cumulative_cases_per_day = []
+            for sim in new_cases_per_day:
+                cumulative_cases_sim = {}
+                total_cases = 0
+                for day in sim:
+                    total_cases += sim[day]
+                    cumulative_cases_sim[day] = total_cases
+                cumulative_cases_per_day.append(cumulative_cases_sim)
+
             all_new_cases_per_day[name] = new_cases_per_day
-            attack_rates = pool.starmap(get_attack_rate, [(output_dir, name, exp_id, num_days) for exp_id in experiment_ids])
-            all_attack_rates.append(attack_rates)
-            num_non_compliers = pool.starmap(get_num_non_compliers, [(output_dir, name, exp_id) for exp_id in experiment_ids])
-            all_nums_non_compliers.append(num_non_compliers)
-            by_age = pool.starmap(get_num_non_compliers_by_age, [(output_dir, name, exp_id) for exp_id in experiment_ids])
+            all_cumulative_cases_per_day[name] = cumulative_cases_per_day
+
+            '''by_age = pool.starmap(get_num_non_compliers_by_age, [(output_dir, name, exp_id) for exp_id in experiment_ids])
             mean_by_age = []
             for age in range(111):
                 nc_for_age = [r[age] for r in by_age]
                 mean = sum(nc_for_age) / len(nc_for_age)
                 #mean = [sum(r[age]) / len(r[age]) for r in by_age]
                 mean_by_age.append(mean)
-            all_nc_by_age.append(mean_by_age)
+            all_nc_by_age.append(mean_by_age)'''
 
-    for i in range(len(scenario_names)):
+    """for name in scenario_names:
+
+            attack_rates = pool.starmap(get_attack_rate, [(output_dir, name, exp_id, num_days) for exp_id in experiment_ids])
+            all_attack_rates.append(attack_rates)
+            num_non_compliers = pool.starmap(get_num_non_compliers, [(output_dir, name, exp_id) for exp_id in experiment_ids])
+            all_nums_non_compliers.append(num_non_compliers)
+
+    """
+
+    '''for i in range(len(scenario_names)):
         plt.plot(all_nc_by_age[i])
     plt.xlabel("Age (in years)")
     plt.ylabel("Mean number of non-compliers")
     plt.legend(scenario_names)
+
+    plt.show()'''
+
+    """
     plt.savefig("non_compliers_by_age_comparison.png")
     plt.clf()
+    """
 
     i = 0
     colors = ["green", "red", "blue", "yellow", "magenta"]
@@ -139,6 +160,31 @@ def main(output_dir, scenario_names, scenario_display_names):
 
     plt.legend(plots, scenario_display_names)
     plt.tight_layout()
+    plt.show()
+
+
+    i = 0
+    colors = ["green", "red", "blue", "yellow", "magenta"]
+    plots = []
+    for name in scenario_names:
+        results = all_cumulative_cases_per_day[name]
+        for r in results:
+            cumulative_cases = []
+            for d in range(num_days):
+                cumulative_cases.append(r[d])
+            p, = plt.plot(dates, cumulative_cases, color=colors[i])
+        plots.append(p)
+        i += 1
+
+    plt.xlabel("Day")
+    plt.xticks(dates[::5], [x.strftime("%d/%m") for x in dates[::5]], rotation=45)
+    plt.ylabel("Cumulative cases")
+    plt.legend(plots, scenario_display_names)
+    plt.tight_layout()
+    plt.show()
+
+
+    """
     plt.savefig("new_cases_per_day_comparison.png")
     plt.clf()
 
@@ -182,7 +228,7 @@ def main(output_dir, scenario_names, scenario_display_names):
     plt.ylabel("Total number of non-compliers")
     plt.tight_layout()
     plt.savefig("num_non_compliers_comparison.png")
-    plt.clf()
+    plt.clf()"""
 
 
 if __name__=="__main__":

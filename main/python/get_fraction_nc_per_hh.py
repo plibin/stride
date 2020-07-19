@@ -4,35 +4,26 @@ import os
 import xml.etree.ElementTree as ET
 
 def main(population_dir, population_name, use_pct_of_exprob):
-    # Get exceedance probability per NIS code
-    exceedance_prob_file = "exprob_R6_BE_PC_1.txt"
+    # Get proportion of non-compliers per NIS code
+    nc_by_nis = {}
+    with open("WAVE6_nc_by_nis.csv") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            nc_by_nis[int(row["nis_code"])] = float(row["fraction_non_compliers"])
 
-    exceedance_prob_by_nis = {}
-    with open(exceedance_prob_file) as f:
-        # Skip header
-        next(f)
-        for line in f:
-            line = line.split()
-            nis_code = int(line[2])
-            exprob = float(line[0]) * (use_pct_of_exprob / 100)
-            if nis_code in exceedance_prob_by_nis:
-                exceedance_prob_by_nis[nis_code].append(exprob)
-            else:
-                exceedance_prob_by_nis[nis_code] = [exprob]
-
-    for nis_code, exprobs in exceedance_prob_by_nis.items():
-        avg_exprob = sum(exprobs) / len(exprobs)
-        exceedance_prob_by_nis[nis_code] = avg_exprob
-
-    exceedance_prob_by_district = {}
-    # Match NIS codes to district IDs in the simulator
+    # Match NIS codes to district IDs in the simulator population
+    nc_by_district = {}
     with open(os.path.join(population_dir, population_name + "_all", population_name + "_district_data.csv")) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             district_nis_code = int(row["city"])
-            exceedanc_prob = exceedance_prob_by_nis[district_nis_code]
+            if district_nis_code in nc_by_nis:
+                nc = nc_by_nis[district_nis_code]
+            else:
+                nc = 0
             district_id = int(row["id"])
-            exceedance_prob_by_district[district_id] = exceedanc_prob
+            nc_by_district[district_id] = nc
+
 
     # Match households to districts
     households_by_district = {}
@@ -48,12 +39,12 @@ def main(population_dir, population_name, use_pct_of_exprob):
 
     # Write to file
     root = ET.Element("hotspots")
-    for district_id in households_by_district.keys():
+    for district_id in households_by_district:
         new_district = ET.SubElement(root, "district")
         new_district_id = ET.SubElement(new_district, "id")
         new_district_id.text = str(district_id)
         new_district_fraction_nc = ET.SubElement(new_district, "fraction_non_compliers")
-        new_district_fraction_nc.text = str(exceedance_prob_by_district[district_id])
+        new_district_fraction_nc.text = str(nc_by_district[district_id])
         new_households = ET.SubElement(new_district, "households")
         for hh_id in households_by_district[district_id]:
             new_hh_id = ET.SubElement(new_households, "hh_id")

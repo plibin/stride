@@ -31,7 +31,7 @@ rm(list=ls())
 source('./bin/rstride/rStride.R')
  
 # set directory postfix (optional)
-dir_postfix <- 'workplaces_random_15'
+dir_postfix <- 'baseline'
  
 # store all transmission output
 store_transmission_rdata <- TRUE
@@ -47,15 +47,15 @@ num_seeds  <- 20
 exp_design <- expand.grid(  
                             age_contact_matrix_file       = "contact_matrix_flanders_conditional_teachers.xml",
                             disease_config_file           = "disease_covid19_age.xml",
-                            holidays_file                 = "calendar_belgium_2020_covid19_july.json",     # all measures in place until 30/6
+                            holidays_file                 = "calendar_belgium_2020_covid19_exit_school_adjusted.json",
                             num_daily_imported_cases      = c(0),
-                            num_days                      = 150,
+                            num_days                      = 120,
                             num_participants_survey       = 0,
                             population_file               = "pop_belgium3000k_c500_teachers_censushh.csv",
-                            r0                            = 3.5,
+                            r0                            = 3.41,
                             rng_seed                      = seq(num_seeds),
-                            num_infected_seeds            = 90, 
-                            start_date                    = '2020-02-17',
+                            num_infected_seeds            = 139, 
+                            start_date                    = '2020-08-31',
                             
                             # Social distancing parameters
                             school_system_adjusted        = 1,
@@ -64,10 +64,10 @@ exp_design <- expand.grid(
                             cnt_reduction_other           = c(0.85),
                             compliance_delay_workplace    = c(6),
                             compliance_delay_other        = c(6),
-                            cnt_reduction_workplace_exit  = 0.8,           # from July, same behavior
-                            cnt_reduction_other_exit      = 0.85,          # from July, same behavior
-                            cnt_reduction_school_exit     = 1,             # no mixing in schools
-                            cnt_reduction_intergeneration = 0.9,           # distancing with 'elderly' people (see next)
+                            cnt_reduction_workplace_exit  = 0.6,           
+                            cnt_reduction_other_exit      = 0.7,          
+                            cnt_reduction_school_exit     = 0.5,        
+                            cnt_reduction_intergeneration = 0.7,           # distancing with 'elderly' people (see next)
                             cnt_reduction_intergeneration_cutoff = 65,     # age break for 'elderly' (see previous)
                           
                             # Contact tracing parameters
@@ -80,12 +80,12 @@ exp_design <- expand.grid(
                             
                             # Non-compliance parameters
                             
-                            non_compliance_pooltype        = "Workplace",
-                            non_compliance_type            = "Random",
-                            num_non_compliers              = 179880, 
+                            #non_compliance_pooltype        = "Community",
+                            #non_compliance_type            = "Random",
+                            #num_non_compliers              = 186104, 
                             
-                            #non_compliance_type            = "Hotspots",
-                            #non_compliance_hotspots_file   = "data/pop_belgium3000k_c500_teachers_censushh_non_compliers_by_exceedance_prob_100.xml",
+                            #non_compliance_type            = "Pools",
+                            #non_compliance_pools_file   = "data/pop_belgium3000k_c500_teachers_censushh_nc_pools_sanspapiers.xml",
                             
                             #non_compliance_by_age_file     = "data/non_compliance_by_age.xml",
                             
