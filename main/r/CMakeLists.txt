@@ -12,7 +12,7 @@
 #  along with the software. If not, see <http://www.gnu.org/licenses/>.
 #  see http://www.gnu.org/licenses/.
 #
-#  Copyright 2019, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
 #############################################################################
 
 #================================================================================================
@@ -21,7 +21,6 @@
 # rStride main files
 INSTALL(DIRECTORY
 	   rstride
-	   socrates
 	DESTINATION ${BIN_INSTALL_LOCATION}
 	PATTERN "*.Rproj*" EXCLUDE
 	PATTERN "*.Rhistory" EXCLUDE
@@ -32,12 +31,16 @@ INSTALL(DIRECTORY
 INSTALL( FILES 			
             rStride_all.R
             rStride_contacts.R
+            rStride_create_config.R
+            rStride_parse_output.R
             rStride_explore.R
             rStride_gtester_covid19.R
             rStride_r0.R 	
+            rStride_intervention_baseline.R
             rStride_intervention.R
-            rStride_geoclustering.R
-	    		rStride_popsizes.R					 
+            rStride_geoclustering.R			 
+            rStride_pop.R				 
+
 	DESTINATION ${BIN_INSTALL_LOCATION}  
 	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_WRITE GROUP_READ
 )

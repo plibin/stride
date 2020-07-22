@@ -29,12 +29,18 @@ using namespace std;
 using namespace stride::ContactType;
 
 void Person::Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOff,
-		bool adaptiveSymptomaticBehavior, bool isWorkplaceDistancingEnforced,
+		bool isTeleworkEnforced, bool isHouseholdClusteringAllowed,
 		ContactHandler& cHandler)
 
 {
         // Update health and disease status
         m_health.Update();
+
+        // by default: a person is at home
+        m_in_pools[Id::Household]          = true;
+
+        // is household clustering allowed?
+        m_in_pools[Id::HouseholdCluster]   = isHouseholdClusteringAllowed ? true : false;
 
         // Update presence in contact pools by type of day
         if (isRegularWeekday) {
@@ -47,21 +53,13 @@ void Person::Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOf
             m_in_pools[Id::SecondaryCommunity] = false;
         }
 
-        if (isK12SchoolOff) {
-        	m_in_pools[Id::K12School]          = false;
-        } else{
-        	m_in_pools[Id::K12School]          = true;
-        }
-
-        if (isCollegeOff) {
-			m_in_pools[Id::College]            = false;
-		} else{
-			m_in_pools[Id::College]            = true;
-		}
+        // Update presence at school and college
+        m_in_pools[Id::K12School] = isK12SchoolOff ? false : true;
+        m_in_pools[Id::College]   = isCollegeOff   ? false : true;
 
 
         // Update presence in contact pools by health state
-        if (m_health.IsSymptomatic() && adaptiveSymptomaticBehavior) {
+        if (m_health.IsSymptomatic()) {
 
         	// probability of staying home from school/work given symptoms
         	if(cHandler() < m_health.GetSymptomaticCntReductionWorkSchool()){
@@ -75,21 +73,25 @@ void Person::Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOf
 				m_in_pools[Id::PrimaryCommunity]   = false;
 				m_in_pools[Id::SecondaryCommunity] = false;
         	}
+
+        	// stay home from household cluster when symptomatic
+			m_in_pools[Id::HouseholdCluster]   = false;
+
         }
 
-        if(isWorkplaceDistancingEnforced && IsTeleworking()){
+        if(isTeleworkEnforced && IsAbleToTelework()){
 			m_in_pools[Id::Workplace]          = false;
 		}
 
         // Update presence in contact pools if person is in quarantine
         if(m_health.IsInIsolation()){
-//        	std::cout << "Person in self-isolation" << std::endl;
         	m_in_pools[Id::Household]          = false;  //TODO: no household transmission in quarantine?
         	m_in_pools[Id::K12School]          = false;
 			m_in_pools[Id::College]            = false;
 			m_in_pools[Id::Workplace]          = false;
         	m_in_pools[Id::PrimaryCommunity]   = false;
         	m_in_pools[Id::SecondaryCommunity] = false;
+        	m_in_pools[Id::HouseholdCluster]   = false;
         }
 
 } // Person::Update()

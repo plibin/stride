@@ -21,7 +21,6 @@
 #include "Population.h"
 
 #include "disease/Health.h"
-#include "pop/DefaultPopBuilder.h"
 #include "util/Assert.h"
 #include "util/FileSys.h"
 #include "util/LogUtils.h"
@@ -32,6 +31,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <utility>
+#include "PopBuilder.h"
 
 using namespace boost::property_tree;
 using namespace std;
@@ -40,9 +40,9 @@ using namespace stride::ContactType;
 
 namespace stride {
 
-Population::Population() : m_pool_sys(), m_contact_logger() {}
+Population::Population() : m_pool_sys(), m_event_logger() {}
 
-std::shared_ptr<Population> Population::Create(const boost::property_tree::ptree& config, util::RnMan rnMan,
+std::shared_ptr<Population> Population::Create(const boost::property_tree::ptree& config,
                                                std::shared_ptr<spdlog::logger> strideLogger)
 {
         if (!strideLogger) {
@@ -50,25 +50,25 @@ std::shared_ptr<Population> Population::Create(const boost::property_tree::ptree
         }
 
         // --------------------------------------------------------------
-        // Create empty population & and give it a ContactLogger.
+        // Create empty population & and give it a InfectorLogger.
         // --------------------------------------------------------------
         const auto pop = Create();
-        if (config.get<bool>("run.contact_output_file", true)) {
+        if (config.get<bool>("run.event_output_file", true)) {
                 const auto prefix       = config.get<string>("run.output_prefix");
-                const auto logPath      = FileSys::BuildPath(prefix, "contact_log.txt");
-                pop->RefContactLogger() = LogUtils::CreateRotatingLogger("contact_logger", logPath.string());
-                pop->RefContactLogger()->set_pattern("%v");
-                strideLogger->info("Contact logging requested; logger set up.");
+                const auto logPath      = FileSys::BuildPath(prefix, "event_log.txt");
+                pop->RefEventLogger()   = LogUtils::CreateRotatingLogger("event_logger", logPath.string());
+                pop->RefEventLogger()->set_pattern("%v");
+                strideLogger->info("Event logging requested; logger set up.");
         } else {
-                pop->RefContactLogger() = LogUtils::CreateNullLogger("contact_logger");
-                strideLogger->info("No contact logging requested.");
+                pop->RefEventLogger() = LogUtils::CreateNullLogger("event_logger");
+                strideLogger->info("No Event logging requested.");
         }
 
         // -----------------------------------------------------------------------------------------
         // Build population.
         // -----------------------------------------------------------------------------------------
-        strideLogger->info("Invoking DefaultPopBuilder.");
-        DefaultPopBuilder(config, rnMan, strideLogger).Build(pop);
+        strideLogger->info("Invoking PopBuilder.");
+        PopBuilder(config, strideLogger).Build(pop);
 
         // -----------------------------------------------------------------------------------------
         // Done.
@@ -76,15 +76,10 @@ std::shared_ptr<Population> Population::Create(const boost::property_tree::ptree
         return pop;
 }
 
-std::shared_ptr<Population> Population::Create(const string& configString, util::RnMan rnMan,
-                                               std::shared_ptr<spdlog::logger> stride_logger)
-{
-        return Create(RunConfigManager::FromString(configString), std::move(rnMan), std::move(stride_logger));
-}
-
 std::shared_ptr<Population> Population::Create()
 {
-        // --------------------------------------------------------------
+
+		// --------------------------------------------------------------
         // Create (empty) population and return it
         // --------------------------------------------------------------
         struct make_shared_enabler : public Population
@@ -96,10 +91,10 @@ std::shared_ptr<Population> Population::Create()
 
 Person* Population::CreatePerson(unsigned int id, double age, unsigned int householdId, unsigned int k12SchoolId,
                                  unsigned int college, unsigned int workId, unsigned int primaryCommunityId,
-                                 unsigned int secondaryCommunityId)
+                                 unsigned int secondaryCommunityId, unsigned int householdClusterId)
 {
         return emplace_back(id, age, householdId, k12SchoolId, college, workId, primaryCommunityId,
-                            secondaryCommunityId);
+                            secondaryCommunityId, householdClusterId);
 }
 
 unsigned int Population::GetTotalInfected() const
@@ -162,5 +157,20 @@ unsigned int Population::GetMaxAge() const
         }
         return maxAge;
 }
+
+unsigned int Population::GetPoolSize(ContactType::Id typeId, const Person* p) const {
+
+	// get ContactPool id
+	unsigned int poolId = p->GetPoolId(typeId);
+
+	// poolId 0 means "not part of such a PoolType"
+	if(poolId == 0){
+		return 0;
+	}
+
+	// return ContactPool size
+	return m_pool_sys.CRefPools(typeId)[poolId].size();
+}
+
 
 } // namespace stride

@@ -41,18 +41,13 @@ class RnMan;
  * Key Data structure: container for
  * (a) all individuals in the population
  * (b) the ContactPoolSys which is used to loop over ContactPools of each type
- * (c) (if present) GeoGrid of Locations, each having an index of ContactPools at that location.
  */
 class Population : public util::SegmentedVector<Person, 2048>
 {
 public:
         /// Create a Population initialized by the configuration in property tree.
-        static std::shared_ptr<Population> Create(const boost::property_tree::ptree& config, util::RnMan rnMan,
+        static std::shared_ptr<Population> Create(const boost::property_tree::ptree& config,
                                                   std::shared_ptr<spdlog::logger> strideLogger = nullptr);
-
-        /// For use in python environment: create Population using configuration string i.o ptree.
-        static std::shared_ptr<Population> Create(const std::string& configString, util::RnMan rnMan,
-                                                  std::shared_ptr<spdlog::logger> stride_logger = nullptr);
 
         /// Create an empty Population, used in gengeopop.
         static std::shared_ptr<Population> Create();
@@ -61,7 +56,7 @@ public:
         /// Create Person in the population.
         Person* CreatePerson(unsigned int id, double age, unsigned int householdId, unsigned int k12SchoolId,
                              unsigned int collegeId, unsigned int workId, unsigned int primaryCommunityId,
-                             unsigned int secondaryCommunityId);
+                             unsigned int secondaryCommunityId, unsigned int householdClusterId);
 
         /// Get the cumulative number of cases.
         unsigned int GetTotalInfected() const;
@@ -78,18 +73,20 @@ public:
         /// Get the current number of symptomatic cases.
         unsigned int CountSymptomaticCases() const;
 
-
         /// Get the maximum age in the population.
         unsigned int GetMaxAge() const;
 
         /// The ContactPoolSys of the simulator.
         const ContactPoolSys& CRefPoolSys() const { return m_pool_sys; }
 
-        /// Return the contactlogger.
-        std::shared_ptr<spdlog::logger>& RefContactLogger() { return m_contact_logger; }
+        /// Return the InfectorLogger.
+        std::shared_ptr<spdlog::logger>& RefEventLogger() { return m_event_logger; }
 
         /// Reference the ContactPoolSys of the Population.
         ContactPoolSys& RefPoolSys() { return m_pool_sys; }
+
+        /// Get the ContactPool size of a given type and id
+        unsigned int GetPoolSize(ContactType::Id typeId, const Person* p) const;
 
 
 private:
@@ -98,7 +95,7 @@ private:
 
 private:
         ContactPoolSys                  m_pool_sys;       ///< The global @ContactPoolSys.
-        std::shared_ptr<spdlog::logger> m_contact_logger; ///< Logger for contact/transmission.
+        std::shared_ptr<spdlog::logger> m_event_logger; ///< Logger for contact/transmission/tracing/...
 };
 
 } // namespace stride

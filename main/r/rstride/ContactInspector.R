@@ -13,10 +13,9 @@
 #  see http://www.gnu.org/licenses/.
 #
 #
-#  Copyright 2019, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
 ############################################################################ #
 
-source('./bin/socrates/plot_social_contact_matrix.R')
 
 if(0==1) # for debugging
 {
@@ -79,143 +78,167 @@ inspect_contact_data <- function(project_dir){
   data_cnt      <- .rstride$load_aggregated_output(project_dir,'data_contacts',exp_summary$exp_id)
   data_part     <- .rstride$load_aggregated_output(project_dir,'data_participants',exp_summary$exp_id)
 
-  if(nrow(data_cnt)>0 && nrow(data_part)>0)
+  ## reformat
+  data_cnt$cnt_school    <- as.numeric(data_cnt$cnt_school)
+  data_cnt$cnt_prim_comm <- as.numeric(data_cnt$cnt_prim_comm)
+  data_cnt$cnt_sec_comm  <- as.numeric(data_cnt$cnt_sec_comm)
+  data_cnt$sim_day       <- as.numeric(data_cnt$sim_day)
+  data_cnt$cnt_prob      <- as.numeric(data_cnt$cnt_prob)
+  data_cnt$part_sympt    <- as.numeric(data_cnt$part_sympt)
+  data_cnt$cnt_sympt     <- as.numeric(data_cnt$cnt_sympt)
+  
+  summary(data_part)
+  data_part$college_id          <- as.numeric(data_part$college_id)
+  data_part$is_susceptible      <- as.numeric(data_part$is_susceptible)
+  data_part$is_infected         <- as.numeric(data_part$is_infected)
+  data_part$is_infectious       <- as.numeric(data_part$is_infectious)
+  data_part$is_recovered        <- as.numeric(data_part$is_recovered)
+  data_part$is_immune           <- as.numeric(data_part$is_immune)
+  data_part$start_symptomatic   <- as.numeric(data_part$start_symptomatic)
+  data_part$end_infectiousness  <- as.numeric(data_part$end_infectiousness)
+  
+  # if at least one data source is missing... stop
+  if(nrow(data_cnt)==0 || nrow(data_part)==0) 
   {
+    smd_print("PARTICIPANT OR CONTACT DATA MISSING... STOP CONTACT ANALYSIS FOR",exp_summary$output_prefix)
+    return(NULL) 
+  }
     
-    ## people without contacts
-    dim(data_part)[1] - length(unique(data_cnt$local_id))
+  ## people without contacts
+  dim(data_part)[1] - length(unique(data_cnt$local_id))
 
-    ## merge school and college contacts
-    data_cnt$cnt_school <- as.numeric(data_cnt$cnt_school + data_cnt$cnt_college > 0)
-        
-    ## employed and student population
-    data_part$employed <- data_part$workplace_id != 0
-    data_part$student  <- data_part$school_id != 0 | data_part$college_id !=0
-    
-    ## SETTINGS 
-    L <- max(c(80,data_part$part_age))
-    num_days      <- exp_summary$num_days
-    
-    # open pdf stream  
-    exp_tag <- .rstride$create_exp_tag(exp_summary$exp_id)
-    .rstride$create_pdf(project_dir,paste0(exp_tag,'_cnt_patterns'),10,5)
-    #par(mfrow=c(2,2))
-    
-    ## TOTAL
-    mij_total  <- .rstride$plot_cnt_matrix(data_cnt,data_part,'total',L,num_days)
-    
-    ## HOUSEHOLD
-    mij_hh     <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_home==1,],data_part,'household',L,num_days)
-    
-    ## SCHOOL
-    mij_school <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_school==1,],data_part[data_part$student==T,],'school',L,num_days)
-    
-    ## WORK
-    mij_work   <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_work==1,],data_part[data_part$employed==T,],'work',L,num_days)
-    
-    ## PRIMARY COMMUNITY
-    mij_prim_comm <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_prim_comm==1,],data_part,'prim_comm',L,num_days)
-    
-    ## SECUNDARY COMMUNITY
-    mij_sec_comm <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_sec_comm==1,],data_part,'sec_comm',L,num_days)
-    
-    #dev.off()
-    
-    ref_data_tag <- 'ref_fl2010'
-    if(grepl('15touch',exp_summary$age_contact_matrix_file)){
-      #ref_data_tag <- 'ref_fl2010_15touch'
-      smd_print("NO REFERENCE 15_touch CONTACT DATA AVAIABLE",WARNING = TRUE)
-    }
-    
-    # LOAD SURVEY DATA FROM FLANDERS AND FULLY CONNECTED HOUSEHOLDS
-    survey_data <- xmlToList(file.path(data_dir,exp_summary$age_contact_matrix_file))
-    names(survey_data)
-    
-    get_survey_data <- function(cluster_type){
-      survey_cluster     <- unlist(survey_data[[cluster_type]])
-      flag_rate          <- grepl('contact.rate',names(survey_cluster))
-      survey_mij_cluster <- matrix(as.numeric(survey_cluster[flag_rate]),nrow=sum(flag_rate))
-      return(survey_mij_cluster)
-    }
-    
-    survey_mij_hh         <- get_survey_data('household')
-    survey_mij_school     <- get_survey_data('school')
-    survey_mij_work       <- get_survey_data('work')
-    survey_mij_community  <- get_survey_data('secondary_community')
-    survey_mij_total      <- get_survey_data('regular_weekday')
-    
-    survey_mij_school_weekend     <- survey_mij_school*0
-    survey_mij_work_weekend       <- survey_mij_work*0
-    survey_mij_community_weekend  <- get_survey_data('primary_community')
-    survey_mij_total_weekend      <- get_survey_data('regular_weekend')
-    
-    ## COMPARE
-    par(mfrow=c(2,3))
-    
-    plot(rowSums(survey_mij_total),main='total',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,40))
-    lines(rowSums(survey_mij_total_weekend),main='total',xlab='age',ylab='contacts',type='l',lty=2)
-    points(rowSums(mij_total,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    
-    plot(rowSums(survey_mij_hh),main='household',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,5))
-    points(rowSums(mij_hh,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    
-    plot(rowSums(survey_mij_school),main='school',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,20))
-    lines(rowSums(survey_mij_school_weekend),type='l',lty=2)
-    points(rowSums(mij_school,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    
-    plot(rowSums(survey_mij_work),main='work',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,20))
-    lines(rowSums(survey_mij_work_weekend),type='l',lty=2)
-    points(rowSums(mij_work,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    
-    plot(rowSums(survey_mij_community),main='primary community',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,25))
-    lines(rowSums(survey_mij_community_weekend),type='l',lty=2)
-    points(rowSums(mij_prim_comm,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    
-    plot(rowSums(survey_mij_community),main='secondary community',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,25))
-    lines(rowSums(survey_mij_community_weekend),type='l',lty=2)
-    points(rowSums(mij_sec_comm,na.rm=T),col=2)
-    legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
-    par(mfrow=c(1,1))
-    
-    dev.off() # close pdf stream
-    
-    ## Transmission probability ####
-    .rstride$create_pdf(project_dir,paste0(exp_tag,'_cnt_transm_probability'))
-    par(mfrow=c(2,2))
-    cnt_location_opt <- c('cnt_home', 'cnt_school', 'cnt_work', 'cnt_prim_comm', 'cnt_sec_comm')
-    for(i_cnt in cnt_location_opt){
-      flag <- data_cnt[,i_cnt] == 1
-      if(any(flag))
-        boxplot(cnt_prob ~ part_age, data=data_cnt[flag,],
-                main=paste(i_cnt, '[CNT]'),xlab='age',ylab='contact probability')
-    }
-    
-    for(i_cnt in cnt_location_opt){
-      flag <- data_cnt[,i_cnt] == 1
-      if(any(flag))
-        boxplot(trm_prob ~ part_age, data=data_cnt[flag,],
-                main=paste(i_cnt, '[TRM]'),xlab='age',ylab='transmission probability')
-    }
-    
-    dev.off() # close pdf stream
+  ## merge school and college contacts
+  data_cnt$cnt_school <- as.numeric(data_cnt$cnt_school + data_cnt$cnt_college > 0)
+      
+  ## employed and student population
+  data_part$employed <- data_part$workplace_id != 0
+  data_part$student  <- data_part$school_id != 0 | data_part$college_id !=0
+  
+  ## SETTINGS 
+  L <- max(c(80,data_part$part_age))
+  num_days      <- exp_summary$num_days
+  
+  # open pdf stream  
+  exp_tag <- .rstride$create_exp_tag(exp_summary$exp_id)
+  .rstride$create_pdf(project_dir,paste0(exp_tag,'_cnt_patterns'),10,5)
+  #par(mfrow=c(2,2))
+  
+  ## TOTAL
+  mij_total  <- .rstride$plot_cnt_matrix(data_cnt,data_part,'total',L,num_days)
+  
+  ## HOUSEHOLD
+  mij_hh     <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_home==1,],data_part,'household',L,num_days)
+  
+  ## SCHOOL
+  mij_school <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_school==1,],data_part[data_part$student==T,],'school',L,num_days)
+  
+  ## WORK
+  mij_work   <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_work==1,],data_part[data_part$employed==T,],'work',L,num_days)
+  
+  ## PRIMARY COMMUNITY
+  mij_prim_comm <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_prim_comm==1,],data_part,'prim_comm',L,num_days)
+  
+  ## SECUNDARY COMMUNITY
+  mij_sec_comm <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_sec_comm==1,],data_part,'sec_comm',L,num_days)
+  
+  ## HOUSEHOLD CLUSTER
+  mij_sec_comm <- .rstride$plot_cnt_matrix(data_cnt[data_cnt$cnt_hh_cluster==1,],data_part,'hh_cluster',L,num_days)
+  
+  #dev.off()
+  
+  ref_data_tag <- 'ref_fl2010'
+  if(grepl('15touch',exp_summary$age_contact_matrix_file)){
+    #ref_data_tag <- 'ref_fl2010_15touch'
+    smd_print("NO REFERENCE 15_touch CONTACT DATA AVAIABLE",WARNING = TRUE)
+  }
+  
+  # LOAD SURVEY DATA FROM FLANDERS AND FULLY CONNECTED HOUSEHOLDS
+  survey_data <- xmlToList(file.path(data_dir,exp_summary$age_contact_matrix_file))
+  names(survey_data)
+  
+  get_survey_data <- function(cluster_type){
+    survey_cluster     <- unlist(survey_data[[cluster_type]])
+    flag_rate          <- grepl('contact.rate',names(survey_cluster))
+    survey_mij_cluster <- matrix(as.numeric(survey_cluster[flag_rate]),nrow=sum(flag_rate))
+    return(survey_mij_cluster)
+  }
+  
+  survey_mij_hh         <- get_survey_data('household')
+  survey_mij_school     <- get_survey_data('school')
+  survey_mij_work       <- get_survey_data('work')
+  survey_mij_community  <- get_survey_data('secondary_community')
+  survey_mij_total      <- get_survey_data('regular_weekday')
+  
+  survey_mij_school_weekend     <- survey_mij_school*0
+  survey_mij_work_weekend       <- survey_mij_work*0
+  survey_mij_community_weekend  <- get_survey_data('primary_community')
+  survey_mij_total_weekend      <- get_survey_data('regular_weekend')
+  
+  ## COMPARE
+  par(mfrow=c(2,3))
+  
+  plot(rowSums(survey_mij_total),main='total',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,40))
+  lines(rowSums(survey_mij_total_weekend),main='total',xlab='age',ylab='contacts',type='l',lty=2)
+  points(rowSums(mij_total,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  
+  plot(rowSums(survey_mij_hh),main='household',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,5))
+  points(rowSums(mij_hh,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  
+  plot(rowSums(survey_mij_school),main='school',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,20))
+  lines(rowSums(survey_mij_school_weekend),type='l',lty=2)
+  points(rowSums(mij_school,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  
+  plot(rowSums(survey_mij_work),main='work',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,20))
+  lines(rowSums(survey_mij_work_weekend),type='l',lty=2)
+  points(rowSums(mij_work,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  
+  plot(rowSums(survey_mij_community),main='primary community',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,25))
+  lines(rowSums(survey_mij_community_weekend),type='l',lty=2)
+  points(rowSums(mij_prim_comm,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  
+  plot(rowSums(survey_mij_community),main='secondary community',xlab='age',ylab='contacts',type='l',ylim=c(-0.1,25))
+  lines(rowSums(survey_mij_community_weekend),type='l',lty=2)
+  points(rowSums(mij_sec_comm,na.rm=T),col=2)
+  legend('topright',c('week','weekend','model'),col=c(1,1,2),lty=c(1,2,0),pch=c(-1,-1,1),cex=0.8,title=ref_data_tag)
+  par(mfrow=c(1,1))
+  
+  dev.off() # close pdf stream
+  
+  ## Transmission probability ####
+  .rstride$create_pdf(project_dir,paste0(exp_tag,'_cnt_transm_probability'))
+  par(mfrow=c(2,2))
+  cnt_location_opt <- c('cnt_home', 'cnt_school', 'cnt_work', 'cnt_prim_comm', 'cnt_sec_comm','cnt_hh_cluster')
+  for(i_cnt in cnt_location_opt){
+    flag <- data_cnt[,i_cnt] == 1
+    if(any(flag))
+      boxplot(cnt_prob ~ part_age, data=data_cnt[flag,],
+              main=paste(i_cnt, '[CNT]'),xlab='age',ylab='contact probability')
+  }
+  
+  for(i_cnt in cnt_location_opt){
+    flag <- data_cnt[,i_cnt] == 1
+    if(any(flag))
+      boxplot(trm_prob ~ part_age, data=data_cnt[flag,],
+              main=paste(i_cnt, '[TRM]'),xlab='age',ylab='transmission probability')
+  }
+  
+  dev.off() # close pdf stream
 
-    ## Socrates matrices ####
- 
-    # results with 2 age groups (minors and adults)   
-    age_cat_breaks <- c(0,19,110)
-    plot_socrates_all(data_cnt,data_part,age_cat_breaks,project_dir,paste0(exp_tag,'_AG2'),exp_summary$start_date)
-    
-    # results by 5 age groups
-    age_cat_breaks <- c(0,19,36,65,75,110)
-    plot_socrates_all(data_cnt,data_part,age_cat_breaks,project_dir,paste0(exp_tag,'_AG5'),exp_summary$start_date)
-    
-    
-  } # end if dim(data)...
+  ## Socrates matrices ####
+
+  # results with 2 age groups (minors and adults)   
+  age_cat_breaks <- c(0,18,110)
+  plot_socrates_all(data_cnt,data_part,age_cat_breaks,project_dir,paste0(exp_tag,'_AG2'),exp_summary$start_date)
+  
+  # results by 5 age groups
+  age_cat_breaks <- c(0,18,36,65,75,110)
+  plot_socrates_all(data_cnt,data_part,age_cat_breaks,project_dir,paste0(exp_tag,'_AG5'),exp_summary$start_date)
+  
 } # end function
 
 #################################  OTHER HELP FUNCTIONS  ################################ #
@@ -391,5 +414,106 @@ inspect_contact_data <- function(project_dir){
   
 }
 
+
+## SOCIAL CONTACT RATES OVER TIME ----
+.rstride$contact_timeline <- function(project_dir)
+{
+
+  # load summary
+  project_summary <- .rstride$load_project_summary(project_dir)
+  
+  # retrieve all variable model parameters
+  input_opt_design     <- .rstride$get_variable_model_param(project_summary)
+  input_opt_design
+  
+  # load data
+  data_cnt      <- .rstride$load_aggregated_output(project_dir,'data_contacts')
+  data_part     <- .rstride$load_aggregated_output(project_dir,'data_participants')
+
+  ## reformat
+  data_cnt$cnt_school    <- as.numeric(data_cnt$cnt_school)
+  data_cnt$cnt_prim_comm <- as.numeric(data_cnt$cnt_prim_comm)
+  data_cnt$cnt_sec_comm  <- as.numeric(data_cnt$cnt_sec_comm)
+  data_cnt$sim_day       <- as.numeric(data_cnt$sim_day)
+  data_cnt$cnt_prob      <- as.numeric(data_cnt$cnt_prob)
+  data_cnt$part_sympt    <- as.numeric(data_cnt$part_sympt)
+  data_cnt$cnt_sympt     <- as.numeric(data_cnt$cnt_sympt)
+  
+  summary(data_part)
+  data_part$college_id          <- as.numeric(data_part$college_id)
+  data_part$is_susceptible      <- as.numeric(data_part$is_susceptible)
+  data_part$is_infected         <- as.numeric(data_part$is_infected)
+  data_part$is_infectious       <- as.numeric(data_part$is_infectious)
+  data_part$is_recovered        <- as.numeric(data_part$is_recovered)
+  data_part$is_immune           <- as.numeric(data_part$is_immune)
+  data_part$start_symptomatic   <- as.numeric(data_part$start_symptomatic)
+  data_part$end_infectiousness  <- as.numeric(data_part$end_infectiousness)
+  
+  
+  
+  
+  data_cnt$sim_date <- data_cnt$sim_day + as.Date(unique(project_summary$start_date))
+  
+  # # specific summary
+  # # summary_table                <- as.data.frame.matrix(table(data_transm[,colname_date],data_transm[,colname_value]))
+  # summary_table                  <- dcast(data_cnt, formula('sim_date ~ exp_id'), value.var='ID', length)
+  # names(summary_table)           <- c('sim_date',paste(prefix,names(summary_table)[-1],sep='_'))
+  
+  table(data_part$exp_id)
+  
+  
+  ## COMMUNITY
+  flag_cnt <- data_cnt$cnt_prim_comm == 1 | data_cnt$cnt_sec_comm == 1
+  xx <- table(data_cnt$exp_id[flag_cnt],data_cnt$sim_date[flag_cnt])
+  xx  / 8010
+  
+  cnt_dates <- as.Date(colnames(xx))
+  com_cnt_pp <- xx / 8010
+  
+  flag_pre_lockdown <- cnt_dates < as.Date("2020-03-13")
+  flag_lockdown     <- cnt_dates %in% as.Date("2020-03-14"):as.Date("2020-05-03")
+  flag_exit_p1      <- cnt_dates %in% as.Date("2020-05-04"):as.Date("2020-05-09")
+  flag_exit_p2      <- cnt_dates %in% as.Date("2020-05-10"):as.Date("2020-05-20")
+  flag_exit_p3      <- cnt_dates %in% as.Date("2020-05-25"):as.Date("2020-05-27")
+  
+  
+  
+  mean(com_cnt_pp[,flag_pre_lockdown])
+  mean(com_cnt_pp[,flag_lockdown])
+  cnt_base <- mean(com_cnt_pp[,flag_lockdown])*(1/0.15)
+  
+  apply(com_cnt_pp[,flag_exit_p1],1,mean) / cnt_base
+  apply(com_cnt_pp[,flag_exit_p2],1,mean) / cnt_base
+  apply(com_cnt_pp[,flag_exit_p3],1,mean) / cnt_base
+  
+  
+  plot(as.Date(colnames(xx)),
+       xx[1,]/ 8010 ,ylim=range(xx/ 8010))
+  points(as.Date(colnames(xx)),
+       xx[2,]/ 8010 )
+  points(as.Date(colnames(xx)),
+         xx[3,]/ 8010)
+  points(as.Date(colnames(xx)),
+         xx[4,]/ 8010)
+  
+  ## COMBINED
+  flag_cnt <- data_cnt$cnt_prim_comm == 1 | data_cnt$cnt_sec_comm == 1 | data_cnt$cnt_hh_cluster == 1
+  yy <- table(data_cnt$exp_id[flag_cnt],data_cnt$sim_date[flag_cnt])
+  plot(as.Date(colnames(yy)),
+         yy[3,]/ 8010,
+         col=3) 
+  points(as.Date(colnames(yy)),
+         yy[2,]/ 8010,
+         col=2) 
+  
+  points(as.Date(colnames(yy)),
+         yy[1,]/ 8010,
+         col=1) 
+  
+ ## HH BUBBLE
+  flag_cnt <- data_cnt$cnt_hh_cluster == 1
+  zz <- table(data_cnt$exp_id[flag_cnt],data_cnt$sim_date[flag_cnt])
+    
+}
 
 

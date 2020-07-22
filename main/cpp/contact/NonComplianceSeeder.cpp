@@ -198,7 +198,7 @@ void NonComplianceSeeder::SeedPools(std::shared_ptr<Population> pop, string nonC
 bool NonComplianceSeeder::RegisterNonComplier(std::shared_ptr<Population> pop, Person& p, Id pooltype)
 {
 	Population& population  = *pop;
-	auto&       logger      = population.RefContactLogger();
+	auto&       logger      = population.RefEventLogger();
 
 	// Set person to be non-complier for the correct pooltypes
 	p.SetNonComplier(pooltype);

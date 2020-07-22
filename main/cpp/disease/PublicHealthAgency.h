@@ -21,7 +21,9 @@
 #pragma once
 
 #include "contact/ContactPool.h"
+#include "contact/ContactHandler.h"
 #include "util/RnMan.h"
+#include "util/FileSys.h"
 #include "util/SegmentedVector.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
@@ -49,19 +51,23 @@ public:
         void SetTelework(std::shared_ptr<Population> pop, util::RnMan& rnMan);
 
         /// Public Health Strategy: look for contacts of infected cases and quarantine infected cases
-		void PerformContactTracing(std::shared_ptr<Population> pop, util::RnMan& rnMan, unsigned short int simDay);
+		void PerformContactTracing(std::shared_ptr<Population> pop, ContactHandler& cHandler, const std::shared_ptr<Calendar> calendar);
 
 		bool IsK12SchoolOff(unsigned int age, bool isPreSchoolOff, bool isPrimarySchoolOff, bool isSecondarySchoolOff, bool isCollegeOff);
 
+		/// Is Contact tracing active today?
+		bool IsContactTracingActive(const std::shared_ptr<Calendar> calendar) const;
+
 private:
         double m_telework_probability;    ///< Probability to perform telework (or equivalent) //TODO rename "telework"
+        //contact tracing configuration
         double m_detection_probability;   ///< Detection probability of symptomatic cases.
-        double m_case_finding_efficency;  ///< Detection probability of infected cases during case finding
+        double m_tracing_efficiency_household;  ///< Tracing probability for household members
+        double m_tracing_efficiency_other;      ///< Tracing probability for non-household members
         unsigned int m_case_finding_capacity;  ///< Maximum number of symptomatic cases with contact tracing per day
-        unsigned int m_delay_testing;         ///< Number of days after symptom onset to perform a clinical test
+        unsigned int m_delay_isolation_index;         ///< Number of days after symptom onset to perform a clinical test
         unsigned int m_delay_contact_tracing; ///< Number of days after clinical test to start contact tracing
 		double m_test_false_negative;         ///< False negative rate of PCR tests
-		bool m_identify_all_cases;            ///< Boolean to identify all cases in the network of the index, or only his/her secondary cases
 
 		bool m_school_system_adjusted;         ///< Apply adjusted school system for pre-, primary and secondary schools?
 };

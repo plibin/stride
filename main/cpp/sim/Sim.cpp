@@ -20,7 +20,7 @@
 
 #include "Sim.h"
 
-#include "calendar/DaysOffStandard.h"
+#include "calendar/Calendar.h"
 #include "contact/ContactType.h"
 #include "contact/InfectorExec.h"
 #include "disease/DiseaseSeeder.h"
@@ -35,15 +35,17 @@ namespace stride {
 
 using namespace std;
 using namespace util;
-using namespace ContactLogMode;
+using namespace EventLogMode;
 
 Sim::Sim()
-    : m_config(), m_contact_log_mode(Id::None), m_num_threads(1U), m_track_index_case(false),
-      m_adaptive_symptomatic_behavior(false), m_calendar(nullptr), m_contact_profiles(), m_handlers(), m_infector(),
+    : m_config(), m_event_log_mode(Id::None), m_num_threads(1U), m_track_index_case(false),
+      m_calendar(nullptr), m_contact_profiles(), m_handlers(), m_infector_default(),m_infector_tracing(),
       m_population(nullptr), m_rn_man(), m_transmission_profile(), m_cnt_reduction_workplace(0), m_cnt_reduction_other(0),
 	  m_cnt_reduction_workplace_exit(0),m_cnt_reduction_other_exit(0), m_cnt_reduction_school_exit(0), m_cnt_reduction_intergeneration(0),
-	  m_cnt_reduction_intergeneration_cutoff(0), m_compliance_delay_workplace(0), m_compliance_delay_other(0),
-	  m_day_of_community_distancing(0), m_day_of_workplace_distancing(0), m_public_health_agency(),m_num_daily_imported_cases(0)
+	  m_cnt_reduction_intergeneration_cutoff(0), m_compliance_delay_workplace(0), m_compliance_delay_other(0),m_cnt_other_exit_delay(0),
+	  m_day_of_community_distancing(0), m_day_of_workplace_distancing(0), m_day_of_community_distancing_exit(0),m_cnt_intensity_householdCluster(0),
+	  m_public_health_agency(),m_universal_testing(),m_num_daily_imported_cases(0)
+
 {
 }
 
@@ -59,24 +61,22 @@ std::shared_ptr<Sim> Sim::Create(const boost::property_tree::ptree& config, shar
         return sim;
 }
 
-std::shared_ptr<Sim> Sim::Create(const string& configString, std::shared_ptr<Population> pop, util::RnMan rnMan)
-{
-	return Create(RunConfigManager::FromString(configString), std::move(pop), std::move(rnMan));
-}
-
 void Sim::TimeStep()
 {
+
         // Logic where you compute (on the basis of input/config for initial day or on the basis of
         // number of sick persons, duration of epidemic etc) what kind of DaysOff scheme you apply.
-        const auto daysOff          = std::make_shared<DaysOffStandard>(m_calendar);
-        const bool isRegularWeekday = daysOff->IsRegularWeekday();
-        const bool isPreSchoolOff       = daysOff->IsPreSchoolOff();
-        const bool isPrimarySchoolOff   = daysOff->IsPrimarySchoolOff();
-        const bool isSecondarySchoolOff = daysOff->IsSecondarySchoolOff();
-        const bool isCollegeOff         = daysOff->IsCollegeOff();
-        const bool isWorkplaceDistancingEnforced   = daysOff->IsWorkplaceDistancingEnforced();
-        const bool isCommunityDistancingEnforced   = daysOff->IsCommunityDistancingEnforced();
-        const bool isContactTracingActivated       = daysOff->IsContactTracingActivated();
+        const bool isRegularWeekday     = m_calendar->IsRegularWeekday();
+        const bool isPreSchoolOff       = m_calendar->IsPreSchoolOff();
+        const bool isPrimarySchoolOff   = m_calendar->IsPrimarySchoolOff();
+        const bool isSecondarySchoolOff = m_calendar->IsSecondarySchoolOff();
+        const bool isCollegeOff         = m_calendar->IsCollegeOff();
+        const bool isWorkplaceDistancingEnforced   = m_calendar->IsWorkplaceDistancingEnforced();
+        const bool isCommunityDistancingEnforced   = m_calendar->IsCommunityDistancingEnforced();
+        const bool isHouseholdClusteringAllowed    = m_calendar->IsHouseholdClusteringAllowed();
+
+        // skip all K12 schools?
+        bool areAllK12SchoolsOff = (isPreSchoolOff && isPrimarySchoolOff && isSecondarySchoolOff);
 
         // increment the number of days in lock-down and account for compliance
 		double workplace_distancing_factor = 0.0;
@@ -105,28 +105,42 @@ void Sim::TimeStep()
 				community_distancing_factor *= 1.0 * m_day_of_community_distancing / m_compliance_delay_other;
 			}
 		} else if (m_day_of_community_distancing > 0){
-			community_distancing_factor       = m_cnt_reduction_other_exit;
+
+			m_day_of_community_distancing_exit += 1;
+
+			if(m_day_of_community_distancing_exit < m_cnt_other_exit_delay){
+				community_distancing_factor       = m_cnt_reduction_other;
+			} else{
+				community_distancing_factor       = m_cnt_reduction_other_exit;
+			}
 			intergeneration_distancing_factor = m_cnt_reduction_intergeneration;
 		}
 
 		// get distancing at school
-		double school_distancing_factor = 0.0;
-		if(m_day_of_workplace_distancing > 0){
-			school_distancing_factor = m_cnt_reduction_school_exit;
+		double school_distancing_factor = (m_day_of_workplace_distancing > 0) ? m_cnt_reduction_school_exit : 0 ;
 
-		}
-
-
-        // To be used in update of population & contact pools.
+		// To be used in update of population & contact pools.
         Population& population    = *m_population;
         auto&       poolSys       = population.RefPoolSys();
-        auto        contactLogger = population.RefContactLogger();
+        auto        eventLogger   = population.RefEventLogger();
         const auto  simDay        = m_calendar->GetSimulationDay();
-        const auto& infector      = *m_infector;
+
+        // Select infector, based on tracing
+        const auto& infector      = m_public_health_agency.IsContactTracingActive(m_calendar) ? *m_infector_tracing : *m_infector_default;
+
+        // set HouseholdCluster intensity
+        double cnt_intensity_householdCluster = 0.0;
+		if (isHouseholdClusteringAllowed && poolSys.RefPools(ContactType::Id::HouseholdCluster).size() > 1){
+			cnt_intensity_householdCluster = m_cnt_intensity_householdCluster;
+		}
 
         // Import infected cases into the population
-        if(m_num_daily_imported_cases > 0){
-        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_num_daily_imported_cases, simDay);
+//        if(m_num_daily_imported_cases > 0){
+//        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_num_daily_imported_cases, simDay);
+//        }
+        if(m_calendar->GetNumberOfImportedCases() > 0){
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay);
+        cout << "import cases: " << m_calendar->GetNumberOfImportedCases() << endl;
         }
 
 #pragma omp parallel num_threads(m_num_threads)
@@ -142,42 +156,45 @@ void Sim::TimeStep()
 				bool isK12SchoolOff = m_public_health_agency.IsK12SchoolOff(population[i].GetAge(),isPreSchoolOff,isPrimarySchoolOff,
 						isSecondarySchoolOff, isCollegeOff);
 
-				// update presence
+				// update health and presence at diffent contact pools
 				population[i].Update(isRegularWeekday, isK12SchoolOff, isCollegeOff,
-						m_adaptive_symptomatic_behavior,
-						isWorkplaceDistancingEnforced, m_handlers[thread_num]);
+						isWorkplaceDistancingEnforced, isHouseholdClusteringAllowed,
+						m_handlers[thread_num]);
 			}
+        }// end pragma openMP
 
-			// Perform contact tracing (if activated)
-			if(isContactTracingActivated){
-				std::cout << "CONTACT TRACING" << endl;
-				m_public_health_agency.PerformContactTracing(m_population, m_rn_man, simDay);
-			}
+		 // Perform contact tracing (if activated)
+		 m_public_health_agency.PerformContactTracing(m_population, m_handlers[0], m_calendar);
 
-			// skip all K12 school pools?
-			bool isK12SchoolOff = (isPreSchoolOff && isPrimarySchoolOff && isSecondarySchoolOff);
+		 // Perform universal testing 
+	     m_universal_testing.PerformUniversalTesting(m_population, m_handlers[0], m_calendar);
 
+#pragma omp parallel num_threads(m_num_threads)
+        {
+		    const auto thread_num = static_cast<unsigned int>(omp_get_thread_num());
 			// Infector updates individuals for contacts & transmission within each pool.
 			// Skip pools with id = 0, because it means Not Applicable.
 			for (auto typ : ContactType::IdList) {
 					if ((typ == ContactType::Id::Workplace && !isRegularWeekday) ||
-						(typ == ContactType::Id::K12School && isK12SchoolOff) ||
-						(typ == ContactType::Id::College && isCollegeOff)) {
+						(typ == ContactType::Id::K12School && areAllK12SchoolsOff) ||
+						(typ == ContactType::Id::College && isCollegeOff) ||
+						(typ == ContactType::Id::HouseholdCluster && !isHouseholdClusteringAllowed)) {
 							continue;
 					}
 #pragma omp for schedule(static)
 					for (size_t i = 1; i < poolSys.RefPools(typ).size(); i++) { // NOLINT
 							infector(poolSys.RefPools(typ)[i], m_contact_profiles[typ], m_transmission_profile,
-									 m_handlers[thread_num], simDay, contactLogger,
+									 m_handlers[thread_num], simDay, eventLogger,
 									 workplace_distancing_factor,
 									 community_distancing_factor,
 									 school_distancing_factor,
-									 intergeneration_distancing_factor,m_cnt_reduction_intergeneration_cutoff);
+									 intergeneration_distancing_factor,m_cnt_reduction_intergeneration_cutoff,
+									 m_population,cnt_intensity_householdCluster);
 					}
 			}
-        }
+        } // end pragma openMP
 
-        m_population->RefContactLogger()->flush();
+        m_population->RefEventLogger()->flush();
         m_calendar->AdvanceDay();
 }
 

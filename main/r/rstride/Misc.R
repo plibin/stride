@@ -13,7 +13,7 @@
 #  see http://www.gnu.org/licenses/.
 #
 #
-#  Copyright 2019, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
 ############################################################################# #
 #
 # HELP FUNCTIONS FOR rSTRIDE PRE- AND POST-PROCESSING                       
@@ -88,6 +88,31 @@ if(!(exists('.rstride'))){
 }
 
 ############################# #
+## OPEN JPG STREAM         ####
+############################# #
+.rstride$create_jpg <- function(project_dir,file_name,width=7,height=7){
+  
+  # load project summary
+  project_summary   <- .rstride$load_project_summary(project_dir)
+  
+  # get run_tag
+  run_tag           <- unique(project_summary$run_tag)
+  
+  # get file name with path
+  file_name_path    <- file.path(project_dir,paste0(run_tag,'_',file_name,'.jpg'))
+  
+  # check X11 environment
+  if(nchar(Sys.getenv("DISPLAY"))==0){
+    options(bitmapType='cairo')
+  }
+  
+  # open pdf stream
+  jpeg(file_name_path,width,height,units='in',res=100)
+  
+  return(file_name_path)
+}
+
+############################# #
 ## CREATE EXPERIMENT TAG   ####
 ############################# #
 
@@ -113,7 +138,7 @@ if(!(exists('.rstride'))){
 # root_name <- 'disease'
 # output_prefix <- 'sim_output'
 # Save a list in XML format with given root node
-.rstride$save_config_xml <- function(list_config,root_name,output_prefix){
+.rstride$save_config_xml <- function(list_config,root_name,filename){
   
   # setup XML doc (to add prefix)
   xml_doc = newXMLDoc()
@@ -124,9 +149,6 @@ if(!(exists('.rstride'))){
   # add list info
   smd_listToXML(root, list_config)
   
-  # create filename
-  filename <- paste0(output_prefix,'.xml')
-  
   # xml prefix
   xml_prefix <- paste0(' This file is part of the Stride software [', format(Sys.time()), ']')
   
@@ -134,9 +156,6 @@ if(!(exists('.rstride'))){
   # note: if we use an XMLdoc to include prefix, the line break dissapears...
   # fix: http://r.789695.n4.nabble.com/saveXML-prefix-argument-td4678407.html
   cat( saveXML( xml_doc, indent = TRUE, prefix = newXMLCommentNode(xml_prefix)),  file = filename) 
-  
-  # return the filename
-  return(filename)
 }
 
 ############################# #
@@ -168,29 +187,30 @@ if(!(exists('.rstride'))){
   
   # get output files
   # data_filenames <- unique(dir(file.path(project_summary$output_prefix),pattern='.RData',full.names = T))
-  data_filenames <- unique(dir(file.path(project_dir,'exp_all'),pattern='.RData',full.names = T))
+  data_filenames <- unique(dir(file.path(project_dir,'exp_all'),pattern='.rds',full.names = T))
   
   # get output types
-  data_type_all <- names(get(load(data_filenames[1])))
+  data_type_all <- unique(c(names(readRDS(data_filenames[1])),
+                            names(readRDS(data_filenames[length(data_filenames)]))))
   
   # loop over the output data types
-  data_type <- data_type_all[1]
+  data_type <- data_type_all[6]
   for(data_type in data_type_all){
 
     # check cluster
     smd_check_cluster()
       
     # loop over all experiments, rbind
-      i_file <- 2
+    i_file <- 1
     data_all <- foreach(i_file = 1:length(data_filenames),
-                        .combine='rbind') %do%
+                        .combine=.rstride$rbind_fill) %do%
     {
  
       # get file name
       exp_file_name <- data_filenames[i_file]
       
       # load output data
-      data_exp_all    <- get(load(exp_file_name))
+      data_exp_all    <- readRDS(exp_file_name)
   
       # check if data type present, if not, next experiment
       #if(!data_type %in% names(data_exp_all)){
@@ -222,7 +242,10 @@ if(!(exists('.rstride'))){
       
     # continue if data_all is not NULL
     if(any(!is.null(data_all))){
-      
+
+      # make data.frame #TODO: contine with data.table 
+      data_all <- as.data.frame(data_all)
+
       # make id's unique => by adding a exp_id tag with leading zero's
       names_id_columns  <- names(data_all)[grepl('id',names(data_all)) & names(data_all) != 'exp_id']
       num_exp_id_digits <- nchar(max(data_all$exp_id))+1
@@ -234,7 +257,7 @@ if(!(exists('.rstride'))){
             row_is_id <- row_is_id & data_all[,i_id_column] != 0
           } 
           data_all[row_is_id,i_id_column] <- as.numeric(sprintf(paste0('%d%0',num_exp_id_digits,'d'),
-                                                                data_all[row_is_id,i_id_column],
+                                                                as.numeric(data_all[row_is_id,i_id_column]),
                                                                 data_all$exp_id[row_is_id]))
         }
       }
@@ -332,10 +355,13 @@ if(!(exists('.rstride'))){
 # check file presence
 .rstride$log_levels_exist <- function(design_of_experiment = exp_design){
   
-  valid_levels <- design_of_experiment$contact_log_level %in% c('None','Transmissions','All')
+  valid_levels <- design_of_experiment$event_log_level %in% 
+    c('None','Transmissions','All','ContactTracing')
   
   if(any(!valid_levels)){
-    smd_print('INVALID LOG LEVEL(S):', paste(design_of_experiment$contact_log_level[!valid_levels],collapse = ' '),WARNING=T)
+    smd_print('INVALID LOG LEVEL(S):', 
+              paste(design_of_experiment$event_log_level[!valid_levels],collapse = ' '),
+              WARNING=T)
     return(FALSE)
   }  
   
@@ -396,7 +422,7 @@ if(!(exists('.rstride'))){
 .rstride$valid_seed_infected <- function(design_of_experiment = exp_design){
   
   # select unique combinations of population file and seeding rate
-  unique_exp_design <- unique(design_of_experiment[,c('population_file','num_infected_seeds')])
+  unique_exp_design <- data.frame(population_file= unique(design_of_experiment[,c('population_file')]))
   
   # add the path to the data folder
   data_dir <- './data'
@@ -410,10 +436,13 @@ if(!(exists('.rstride'))){
     close(file_connnection)
   }
   
-  # check... and print warning if needed
-  if(any(unique_exp_design$num_infected_seeds > unique_exp_design$population_size)){
-    flag_issue <- unique_exp_design$num_infected_seeds > unique_exp_design$population_size
-    smd_print('INIALLY INFECTED > POPULATION SIZE:', paste(unique_exp_design[flag_issue,1:2], collapse = ' & initially infected '),WARNING=T)
+  # merge population size with design of experiment parameters
+  design_of_experiment <- merge(design_of_experiment,unique_exp_design)
+  
+  # compare infected seeds with population size... and print warning if needed
+  if(any(design_of_experiment$num_infected_seeds > design_of_experiment$population_size)){
+    flag_issue <- unique_exp_design$num_infected_seeds > design_of_experiment$population_size
+    smd_print('INIALLY INFECTED > POPULATION SIZE:', paste(design_of_experiment[flag_issue,1:2], collapse = ' & initially infected '),WARNING=T)
     return(FALSE)
   }
   
@@ -439,6 +468,9 @@ if(!(exists('.rstride'))){
   
   # load directory content (non recursive)
   sim_dirs <- dir(output_dir) 
+  
+  # exclude .csv files
+  sim_dirs <- sim_dirs[!grepl('.csv',sim_dirs)]
   
   # create project_dir (global)
   project_dir <<- file.path(output_dir,sim_dirs[length(sim_dirs)])
@@ -489,3 +521,26 @@ if(!(exists('.rstride'))){
   
   
 }
+
+.rstride$is_ua_cluster <- function(){
+  return(grepl('leibniz',system('hostname',intern = T)))
+}
+
+
+# cumulative sum, ignoring NA's
+.rstride$cumsum_na <- function(x){
+  cumsum(replace_na(x,0))
+}
+
+# help function to combine unequal vectors in foreach loop
+.rstride$rbind_fill <- function(x,y){
+  if(is.null(y)){
+    return(x)
+  }
+  if(length(setdiff(names(x),names(y)))==0){
+    return(rbind(x,y))
+  } else{
+    return(rbind(x,y,fill=TRUE))
+  }
+}
+

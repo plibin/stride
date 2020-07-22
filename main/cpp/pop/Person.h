@@ -36,14 +36,15 @@ class Person
 {
 public:
         /// Default construction (for population vector).
-        Person() : m_age(0.0), m_id(0), m_pool_ids(), m_health(), m_in_pools(), m_is_participant(), m_teleworking(), m_non_complier() {}
+        Person() : m_age(0.0), m_id(0), m_pool_ids(), m_health(), m_in_pools(), m_is_participant(), m_able_to_telework(), m_non_complier(),
+		m_is_tracing_index(false), m_contact_tracing_list() {}
 
         /// Constructor: set the person data.
         Person(unsigned int id, float age, unsigned int householdId, unsigned int k12SchoolId, unsigned int collegeId,
-               unsigned int workId, unsigned int primaryCommunityId, unsigned int secondaryCommunityId)
-            : m_age(age), m_id(id), m_pool_ids{householdId, k12SchoolId,        collegeId,
-                                               workId,      primaryCommunityId, secondaryCommunityId},
-              m_health(), m_in_pools(true), m_is_participant(false), m_teleworking(false), m_non_complier(false)
+               unsigned int workId, unsigned int primaryCommunityId, unsigned int secondaryCommunityId, unsigned int householdClusterId)
+            : m_age(age), m_id(id), m_pool_ids{householdId, k12SchoolId, collegeId, workId, primaryCommunityId, secondaryCommunityId, householdClusterId},
+			  m_health(), m_in_pools(true), m_is_participant(false), m_able_to_telework(false), m_non_complier(false),
+			  m_is_tracing_index(false), m_contact_tracing_list()
         {
         }
 
@@ -75,8 +76,8 @@ public:
         void ParticipateInSurvey() { m_is_participant = true; }
 
         /// Update the health status and presence in contact pools.
-        void Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOff, bool adaptiveSymptomaticBehavior,
-        		bool isWorkplaceDistancingEnforced, ContactHandler& cHandler);
+        void Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOff,
+        		bool isWorkplaceDistancingEnforced, bool isHouseholdClusteringAllowed, ContactHandler& cHandler);
 
         /// Set the age of the person
         void SetAge(unsigned int newAge) { m_age = newAge; }
@@ -91,10 +92,29 @@ public:
                 m_in_pools[type] = (poolId != 0); // Means present in Household, absent elsewhere.
         }
 
-        // define ability to telework
-        void SetTeleworking() { m_teleworking = true; }
+        /// set ability to telework
+        void SetTeleworkAbility() { m_able_to_telework = true; }
 
-        bool IsTeleworking() const { return m_teleworking;}
+        /// Is this person able to telework
+        bool IsAbleToTelework() const { return m_able_to_telework;}
+
+        /// Set this person as index case for track&trace strategies
+        void SetTracingIndexCase(){ m_is_tracing_index = true; }
+
+        /// Set this person as index case for track&trace strategies
+        bool IsTracingIndexCase() const { return m_is_tracing_index; }
+
+        /// Register contact, if this person is an index case for track&trace
+        void RegisterContact(Person* p) {
+        	if(m_is_tracing_index){
+        		m_contact_tracing_list.push_back(p);
+        	}
+        }
+
+        /// Get register with contacts during infected period
+        std::vector<Person*>& GetContactRegister () {
+        	return m_contact_tracing_list;
+        }
 
         void SetNonComplier(const ContactType::Id& poolType) {  m_non_complier[poolType] = true; }
 
@@ -117,11 +137,17 @@ private:
         ///< Is this a participant in the social contact study?
         bool m_is_participant;
 
-        ///< Is the participant teleworking?
-        bool m_teleworking;
+		///< Is the participant able to telework?
+		bool m_able_to_telework;
 
         ///< Is the person a non-complier to social distancing measures in the contact pools they belong to?
         ContactType::IdSubscriptArray<bool> m_non_complier;
+
+        ///< Is this an index case for track,trace, isolate strategies
+        bool m_is_tracing_index;
+
+        ///< Vector with the id of contacts during infected period
+        std::vector<Person*> m_contact_tracing_list;
 };
 
 } // namespace stride

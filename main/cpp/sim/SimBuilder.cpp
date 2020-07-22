@@ -49,11 +49,11 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
         sim->m_config                        = m_config;
         sim->m_population                    = std::move(pop);
         sim->m_track_index_case              = m_config.get<bool>("run.track_index_case");
-        sim->m_adaptive_symptomatic_behavior = m_config.get<bool>("run.adaptive_symptomatic_behavior", true);
         sim->m_num_threads                   = m_config.get<unsigned int>("run.num_threads");
-        sim->m_calendar                      = make_shared<Calendar>(m_config);
-        sim->m_contact_log_mode = ContactLogMode::ToMode(m_config.get<string>("run.contact_log_level", "None"));
-        sim->m_rn_man           = std::move(rnMan);
+        unsigned int num_days                = m_config.get<unsigned short>("run.num_days");
+        sim->m_calendar                      = make_shared<Calendar>(m_config,num_days);
+        sim->m_event_log_mode                = EventLogMode::ToMode(m_config.get<string>("run.event_log_level", "None"));
+        sim->m_rn_man                        = std::move(rnMan);
 
         // --------------------------------------------------------------
         // Contact handlers, each with generator bound to different
@@ -63,8 +63,16 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
                 auto gen = sim->m_rn_man.GetUniform01Generator(i);
                 sim->m_handlers.emplace_back(ContactHandler(gen));
         }
-        const auto& select = make_tuple(sim->m_contact_log_mode, sim->m_track_index_case);
-        sim->m_infector    = InfectorMap().at(select);
+        const auto& select = make_tuple(sim->m_event_log_mode, sim->m_track_index_case);
+        sim->m_infector_default    = InfectorMap().at(select);
+
+        // additional infector if logmode is Tracing
+        if(m_config.get<string>("run.event_log_level", "None") == "ContactTracing"){
+        	const auto& select_tracing  = make_tuple(EventLogMode::Id::All, sim->m_track_index_case);
+        	sim->m_infector_tracing    = InfectorMap().at(select_tracing);
+        } else{
+        	sim->m_infector_tracing    = InfectorMap().at(select);
+        }
 
         // --------------------------------------------------------------
         // Initialize the age-related contact profiles.
@@ -98,6 +106,11 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
         sim->m_num_daily_imported_cases = m_config.get<double>("run.num_daily_imported_cases",0);
 
         // --------------------------------------------------------------
+		// Set Universal Testing 
+        // --------------------------------------------------------------
+        sim->m_universal_testing.Initialize(m_config);
+        
+        // --------------------------------------------------------------
 		// Set Public Health Agency
 		// --------------------------------------------------------------
         sim->m_public_health_agency.Initialize(m_config);
@@ -111,6 +124,8 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
 		sim->m_cnt_reduction_intergeneration_cutoff = m_config.get<unsigned int>("run.cnt_reduction_intergeneration_cutoff",0);
 		sim->m_compliance_delay_workplace           = m_config.get<unsigned int>("run.compliance_delay_workplace",0);
 		sim->m_compliance_delay_other               = m_config.get<unsigned int>("run.compliance_delay_other",0);
+		sim->m_cnt_other_exit_delay                 = m_config.get<unsigned int>("run.cnt_other_exit_delay",0);
+		sim->m_cnt_intensity_householdCluster       = m_config.get<double>("run.cnt_intensity_householdCluster",0);
 
         // --------------------------------------------------------------
         // Seed population with survey participants.

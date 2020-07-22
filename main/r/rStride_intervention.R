@@ -30,70 +30,47 @@ rm(list=ls())
 # Load rStride
 source('./bin/rstride/rStride.R')
 
+# Load default parameter configurations
+source('./bin/rStride_intervention_baseline.R')
+
 # set directory postfix (optional)
 dir_postfix <- '_int'
-
-# store all transmission output
-store_transmission_rdata <- FALSE
 
 ################################## #
 ## DESIGN OF EXPERIMENTS        ####
 ################################## #
 
-# uncomment the following line to inspect the config xml tags
-#names(xmlToList('./config/run_default.xml'))
+# add default parameters and values to combine in a full-factorial grid
+exp_param_list <- get_exp_param_default()
 
-# set the number of realisations per configuration set
-num_seeds  <- 8
+# change parameters and values to combine in a full-factorial grid
 
-# add parameters and values to combine in a full-factorial grid
-exp_design <- expand.grid(r0                            = seq(3.5,3.5,0.1),
-                          num_days                      = 50,
-                          rng_seed                      = seq(num_seeds),
-                          num_participants_survey       = 300,
-                          num_infected_seeds            = c(180),
-                          disease_config_file           = "disease_covid19_age.xml",
-                          population_file               = "pop_belgium600k_c500_teachers_censushh.csv",
-                          age_contact_matrix_file       = "contact_matrix_flanders_conditional_teachers.xml",
-                          start_date                    = c('2020-02-17'),
-                          holidays_file                 = 'calendar_belgium_2020_covid19_exit_school_adjusted.json',
-                          # holidays_file                 = c("calendar_belgium_2020_covid19_may_preschool.json",
-                          #                                   "calendar_belgium_2020_covid19_may_primary_school.json",
-                          #                                   "calendar_belgium_2020_covid19_may_secondary_school.json",
-                          #                                   "calendar_belgium_2020_covid19_may_workplace.json"),
-                           school_system_adjusted        = 1,
-                          telework_probability          = c(0),
-                          cnt_reduction_workplace       = c(0.8),
-                          cnt_reduction_other           = c(0.85),
-                          compliance_delay_workplace    = c(6),
-                          compliance_delay_other        = c(6),
-                          num_daily_imported_cases      = c(0),
-                          cnt_reduction_workplace_exit  = c(0.4),
-                          cnt_reduction_other_exit      = 0.75,
-                          cnt_reduction_school_exit     = 0.5,
-                          cnt_reduction_intergeneration = c(0.9),
-                          cnt_reduction_intergeneration_cutoff = 65,
-                          detection_probability          = c(0.5),
-                          case_finding_efficency         = 0.7,
-                          case_finding_capacity          = c(2000),
+
+################################################ #
+## GENERATE DESIGN OF EXPERIMENT GRID         ####
+################################################ #
+
+# add sequence with all rng seeds
+exp_param_list$rng_seed = seq(exp_param_list$num_seeds)
+
+# generate grid
+exp_design <- expand.grid(exp_param_list,
                           stringsAsFactors = F)
-
-# check period
-range(as.Date(exp_design$start_date), as.Date(exp_design$start_date)+ exp_design$num_days)
 
 # add a unique seed for each run
 set.seed(125)
 exp_design$rng_seed <- sample(nrow(exp_design))
 dim(exp_design)
 
+# check period
+range(as.Date(exp_design$start_date), as.Date(exp_design$start_date)+ exp_design$num_days)
+
+
 ################################## #
 ## RUN rSTRIDE                  ####
 ################################## #
 project_dir <- run_rStride(exp_design               = exp_design,
-                           dir_postfix              = dir_postfix, 
-                           store_transmission_rdata = store_transmission_rdata,
-                           remove_run_output = TRUE,
-                           ignore_stdout = TRUE)
+                           dir_postfix              = dir_postfix)
 
 
 ############################# #
@@ -123,7 +100,7 @@ inspect_prevalence_data(project_dir)
 ############################# #
 ## TRANSMISSION            ####
 ############################# #
-inspect_transmission_data(project_dir)
+inspect_transmission_dynamics(project_dir)
  
 
 ############################# #

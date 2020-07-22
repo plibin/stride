@@ -13,7 +13,7 @@
 #  see http://www.gnu.org/licenses/.
 #
 #
-#  Copyright 2019, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
 ############################################################################ #
 
 ############################################################################# #
@@ -31,6 +31,14 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
   # if no participants are surveyed, stop
   if(any(project_summary$num_participants_survey==0)){
     # command line message
+    smd_print('NO PARTICIPANTS SELECTED')
+    return(.rstride$no_return_value())
+  }
+  
+  # get all transmission output
+  data_participants_all      <- .rstride$load_aggregated_output(project_dir,'data_participants')
+  if(all(is.na(data_participants_all))){
+    # command line message
     smd_print('NO PARTICIPANT DATA AVAILABLE')
     return(.rstride$no_return_value())
   }
@@ -41,7 +49,7 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
   # open pdf stream
   if(save_pdf) .rstride$create_pdf(project_dir,'survey_participant_inspection',10,7)
 
-  i_config <- 4
+  i_config <- 1
   for(i_config in 1:nrow(input_opt_design))
   {
     # (re)set figure panels
@@ -51,6 +59,10 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
     flag_exp            <- .rstride$get_equal_rows(project_summary,input_opt_design[i_config,])
     data_part           <- .rstride$load_aggregated_output(project_dir,'data_participants',project_summary$exp_id[flag_exp])
     num_runs_exp        <- sum(flag_exp)
+
+    # adjust type of column
+    data_part$start_symptomatic  <- as.numeric(data_part$start_symptomatic)
+    data_part$end_infectiousness <- as.numeric(data_part$end_infectiousness)
     
     # adjust for asymptomatic cases
     flag_asymptomatic <- data_part$start_symptomatic == data_part$end_symptomatic
@@ -89,7 +101,7 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
       
       legend_position <- 'topleft'
       if(max(as.numeric(names(tbl_data)))<10) {legend_position <- 'topright'}
-      legend(legend_position,c('per day','cummulative'),col=c(1,4),lwd=2,cex=0.8)
+      legend(legend_position,c('per day','cumulative'),col=c(1,4),lwd=2,cex=0.8)
       grid()
       abline(h=0.5)
     }
@@ -119,7 +131,7 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
            cex=0.8)
     
     # ## POPULATION
-    # population_age <- as.data.frame(table(part_age = data_part$part_age))
+    population_age <- as.data.frame(table(part_age = data_part$part_age))
     # 
     # ## POPULATION IMMUNITY
     # data_part$is_immune   <- data_part$is_immune == "TRUE"
@@ -153,36 +165,39 @@ inspect_participant_data <- function(project_dir, save_pdf = TRUE)
     #      pch=19, lwd=3, ylim=0:1
     # )
     
-    # ## SCHOOLING
-    # school_age <- data.frame(table(school_enrolled = data_part$school_id != 0,part_age = data_part$part_age))
-    # school_age$part_age <- as.numeric(levels(school_age$part_age)[(school_age$part_age)])
-    # flag <- school_age$school_enrolled == TRUE
-    # plot(school_age$part_age[flag],
-    #      school_age$Freq[flag]/population_age$Freq,
-    #      xlab='age',
-    #      ylab='population fraction',
-    #      main='population enrolled in school',
-    #      pch=1, lwd=3, xlim=c(0,30)
-    # )
-    # abline(v=c(0,3,6,12,18,25)-0.5)
-    # text(x=0,y=0.02,'kindergarten',srt=90,pos=4)
-    # text(x=3,y=0.02,'pre-school',srt=90,pos=4)
-    # text(x=7,y=0.02,'primary school',srt=90,pos=4)
-    # text(x=13,y=0.02,'secundary school',srt=90,pos=4)
-    # text(x=20,y=0.02,'tertiary school',srt=90,pos=4)
+    ## SCHOOLING ----
+    data_part$enrolled_school <- data_part$school_id != 0 | data_part$college_id != 0
+    school_age <- data.frame(table(school_enrolled = data_part$enrolled_school,part_age = data_part$part_age))
+    school_age$part_age <- as.numeric(levels(school_age$part_age)[(school_age$part_age)])
+    flag <- school_age$school_enrolled == TRUE
+    plot(school_age$part_age[flag],
+         school_age$Freq[flag]/population_age$Freq,
+         xlab='age',
+         ylab='population fraction',
+         main='population enrolled in school',
+         pch=1, lwd=3, xlim=c(0,30)
+    )
+    abline(v=c(0,3,6,12,18,25)-0.5)
+    text(x=0,y=0.02,'kindergarten',srt=90,pos=4)
+    text(x=3,y=0.02,'pre-school',srt=90,pos=4)
+    text(x=7,y=0.02,'primary school',srt=90,pos=4)
+    text(x=13,y=0.02,'secundary school',srt=90,pos=4)
+    text(x=20,y=0.02,'tertiary school',srt=90,pos=4)
     # 
     
-    tmp_age      <- table(data_part$part_age)
-    tmp_college  <- table(data_part$part_age,data_part$college_id != 0)
-    tmp_school   <- table(data_part$part_age,data_part$school_id != 0)
+    # tmp_age      <- table(data_part$part_age)
+    # tmp_college  <- table(data_part$part_age,data_part$college_id != 0)
+    # tmp_school   <- table(data_part$part_age,data_part$school_id != 0)
+    # 
+    # barplot(rbind(tmp_school[,2]/tmp_age,tmp_college[,2]/tmp_age),
+    #         xlab='age',
+    #         ylab='relative fraction')
+    # legend('topright',
+    #        c('school open',
+    #          'school-closed'),
+    #        fill=grey.colors(2))   
     
-    barplot(rbind(tmp_school[,2]/tmp_age,tmp_college[,2]/tmp_age),
-            xlab='age',
-            ylab='relative fraction')
-    legend('topright',
-           c('school open',
-             'school-closed'),
-           fill=grey.colors(2))   
+    
   }
   
   # close PDF stream

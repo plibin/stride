@@ -22,16 +22,17 @@
 
 #include "contact/AgeContactProfiles.h"
 #include "contact/ContactHandler.h"
-#include "contact/ContactLogMode.h"
 #include "contact/InfectorExec.h"
 #include "contact/TransmissionProfile.h"
 #include "disease/PublicHealthAgency.h"
+#include "disease/UniversalTesting.h"
 
 #include "util/RnMan.h"
 
 
 #include <boost/property_tree/ptree.hpp>
 #include <string>
+#include "../contact/EventLogMode.h"
 
 namespace stride {
 
@@ -52,9 +53,6 @@ public:
         /// Create Sim initialized by the configuration in property tree and population.
         static std::shared_ptr<Sim> Create(const boost::property_tree::ptree& config, std::shared_ptr<Population> pop,
                                            util::RnMan rnMan);
-
-        /// For use in python environment: create Sim using configuration string i.o. ptree.
-        static std::shared_ptr<Sim> Create(const std::string& configString, std::shared_ptr<Population> pop, util::RnMan rnMan);
 
         /// Calendar for the simulated world. Initialized with the start date in the simulation
         /// world. Use GetCalendar()->GetSimulationDay() for the number of days simulated.
@@ -86,15 +84,15 @@ private:
 
 private:
         boost::property_tree::ptree m_config;                        ///< Configuration property tree
-        ContactLogMode::Id          m_contact_log_mode;              ///< Specifies contact/transmission logging mode.
+        EventLogMode::Id            m_event_log_mode;                ///< Specifies contact/transmission logging mode.
         unsigned int                m_num_threads;                   ///< The number of (OpenMP) threads.
         bool                        m_track_index_case;              ///< General simulation or tracking index case.
-        bool                        m_adaptive_symptomatic_behavior; ///< Should symptomatic cases stay home?
 
         std::shared_ptr<Calendar>   m_calendar;         ///< Management of calendar.
         AgeContactProfiles          m_contact_profiles; ///< Contact profiles w.r.t age.
         std::vector<ContactHandler> m_handlers;         ///< Contact handlers (random numbers & probabilities).
-        InfectorExec*               m_infector;         ///< Executes contacts/transmission loops in contact pool.
+        InfectorExec*               m_infector_default; ///< Executes optimized transmission loops in contact pools.
+        InfectorExec*               m_infector_tracing; ///< Executes all or optimized transmission loops in contact pools.
         std::shared_ptr<Population> m_population;       ///< Pointer to the Population.
         util::RnMan                 m_rn_man;           ///< Random number generation management.
 
@@ -110,10 +108,14 @@ private:
         unsigned int                m_cnt_reduction_intergeneration_cutoff;
         unsigned int                m_compliance_delay_workplace;
         unsigned int                m_compliance_delay_other;
+        unsigned int                m_cnt_other_exit_delay;
         unsigned int                m_day_of_community_distancing;
         unsigned int     	        m_day_of_workplace_distancing;
+        unsigned int     			m_day_of_community_distancing_exit;
+        double                      m_cnt_intensity_householdCluster;
 
         PublicHealthAgency          m_public_health_agency;
+        UniversalTesting            m_universal_testing;
 
         // Introduce new infected cases on a daily basis?
         unsigned int                m_num_daily_imported_cases;

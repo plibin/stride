@@ -38,14 +38,20 @@ SurveySeeder::SurveySeeder(const ptree& config, RnMan& rnMan) : m_config(config)
 
 shared_ptr<Population> SurveySeeder::Seed(shared_ptr<Population> pop)
 {
-        const string logLevel = m_config.get<string>("run.contact_log_level", "None");
+        const string logLevel = m_config.get<string>("run.event_log_level", "None");
         if (logLevel != "None") {
                 Population& population  = *pop;
                 const auto  popCount    = static_cast<unsigned int>(population.size() - 1);
-                const auto  numSurveyed = m_config.get<unsigned int>("run.num_participants_survey");
+                auto  numSurveyed = m_config.get<unsigned int>("run.num_participants_survey");
 
                 assert((popCount >= 1U) && "SurveySeeder> Population count zero unacceptable.");
-                assert((popCount >= numSurveyed) && "SurveySeeder> Pop count has to exceed number of surveyed.");
+                assert((popCount >= numSurveyed) && "SurveySeeder> Pop count has to exceed the number of survey participants.");
+
+                // Make sure the number of survey participants does not outnumber the population size (else no survey)
+                if(popCount < numSurveyed){
+                	numSurveyed = 1;
+
+                }
 
                 // Use while-loop to get 'participants' unique participants (default sampling is with replacement).
                 // A for loop will not do because we might draw the same person twice.
@@ -71,12 +77,12 @@ shared_ptr<Population> SurveySeeder::Seed(shared_ptr<Population> pop)
 void SurveySeeder::RegisterParticipant(std::shared_ptr<Population> pop, Person& p)
 {
 
-	const string logLevel = m_config.get<string>("run.contact_log_level", "None");
+	const string logLevel = m_config.get<string>("run.event_log_level", "None");
 	if (logLevel != "None") {
-		 Population& population  = *pop;
+		Population& population  = *pop;
 
 		auto&       poolSys     = population.CRefPoolSys();
-		auto&       logger      = population.RefContactLogger();
+		auto&       logger      = population.RefEventLogger();
 
 		// set person flag to be survey participant
 		p.ParticipateInSurvey();
@@ -89,31 +95,18 @@ void SurveySeeder::RegisterParticipant(std::shared_ptr<Population> pop, Person& 
 		const auto pW   = p.GetPoolId(Id::Workplace);
 		const auto pPC  = p.GetPoolId(Id::PrimaryCommunity);
 		const auto pSC  = p.GetPoolId(Id::SecondaryCommunity);
-		// TODO: create a more elegant solution
-		// - gengeopop population ==>> unique pool id over all pool types, so ID != index in
-		// poolType-vector
-		// - default population   ==>> unique pool id per pool type, so ID == index in
-		// poolType-vector
-		//if (p.GetPoolId(Id::SecondaryCommunity) < poolSys[Id::SecondaryCommunity].size()) {
-		if (pSC < poolSys.CRefPools<Id::SecondaryCommunity>().size()) {
-				logger->info("[PART] {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}", p.GetId(),
-					 p.GetAge(), pHH, pK12, pC, pW, h.IsSusceptible(), h.IsInfected(), h.IsInfectious(),
-					 h.IsRecovered(), h.IsImmune(), h.GetStartInfectiousness(), h.GetStartSymptomatic(),
-					 h.GetEndInfectiousness(), h.GetEndSymptomatic(),
-					 poolSys.CRefPools<Id::Household>()[pHH].GetPool().size(),
-					 poolSys.CRefPools<Id::K12School>()[pK12].GetPool().size(),
-					 poolSys.CRefPools<Id::College>()[pC].GetPool().size(),
-					 poolSys.CRefPools<Id::Workplace>()[pW].GetPool().size(),
-					 poolSys.CRefPools<Id::PrimaryCommunity>()[pPC].GetPool().size(),
-					 poolSys.CRefPools<Id::SecondaryCommunity>()[pSC].GetPool().size(),
-					 p.IsTeleworking());
-		} else {
-				logger->info("[PART] {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}", p.GetId(),
-					 p.GetAge(), pHH, pK12, pC, pW, h.IsSusceptible(), h.IsInfected(), h.IsInfectious(),
-					 h.IsRecovered(), h.IsImmune(), h.GetStartInfectiousness(), h.GetStartSymptomatic(),
-					 h.GetEndInfectiousness(), h.GetEndSymptomatic(),
-					 -1, -1, -1, -1, -1, -1 -1 );
-		}
+		const auto pHC  = p.GetPoolId(Id::HouseholdCluster);
+		logger->info("[PART] {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}", p.GetId(),
+			 p.GetAge(), pHH, pK12, pC, pW, pHC, h.IsSusceptible(), h.IsInfected(), h.IsInfectious(),
+			 h.IsRecovered(), h.IsImmune(), h.GetStartInfectiousness(), h.GetStartSymptomatic(),
+			 h.GetEndInfectiousness(), h.GetEndSymptomatic(),
+			 poolSys.CRefPools<Id::Household>()[pHH].GetPool().size(),
+			 poolSys.CRefPools<Id::K12School>()[pK12].GetPool().size(),
+			 poolSys.CRefPools<Id::College>()[pC].GetPool().size(),
+			 poolSys.CRefPools<Id::Workplace>()[pW].GetPool().size(),
+			 poolSys.CRefPools<Id::PrimaryCommunity>()[pPC].GetPool().size(),
+			 poolSys.CRefPools<Id::SecondaryCommunity>()[pSC].GetPool().size(),
+			 p.IsAbleToTelework());
 	 }
 }
 
