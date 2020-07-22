@@ -115,26 +115,31 @@ inline double GetContactProbability(const AgeContactProfile& profile, const Pers
 		// initiate a contact adjustment factor, to account for physical distancing and/or contact intensity
     	double cnt_adjustment_factor = 1;
 
-		// account for physical distancing at work and in the community
-		if(pType == Id::Workplace){
-			cnt_adjustment_factor = (1-cnt_reduction_work);
-		}
-		// account for physical distancing in the community
-		if((pType == Id::PrimaryCommunity || pType == Id::SecondaryCommunity)){
+    		// Chek if one of the persons is a non-complier to social distancing measures
+    		// in this particular pooltype
+    		if ((not p1->IsNonComplier(pType)) and (not p2->IsNonComplier(pType))) {
+    			// account for physical distancing at work and in the community
+    			if(pType == Id::Workplace){
+    				cnt_adjustment_factor = (1-cnt_reduction_work);
+    			}
+    			// account for physical distancing in the community
+    			if((pType == Id::PrimaryCommunity || pType == Id::SecondaryCommunity)){
 
-			// apply inter-generation distancing factor if age cutoff is > 0 and at least one age is > cutoff
-			if((cnt_reduction_intergeneration > 0) &&
-				((p1->GetAge() > cnt_reduction_intergeneration_cutoff) || (p2->GetAge() > cnt_reduction_intergeneration_cutoff))){
-				cnt_adjustment_factor = (1-cnt_reduction_intergeneration);
-			} else {
-				// apply uniform community distancing
-				cnt_adjustment_factor = (1-cnt_reduction_other);
-			}
-		}
-		// account for physical distancing at school
-		if(pType == Id::K12School){
-			cnt_adjustment_factor = (1-cnt_reduction_school);
-		}
+    				// apply inter-generation distancing factor if age cutoff is > 0 and at least one age is > cutoff
+    				if((cnt_reduction_intergeneration > 0) &&
+    					((p1->GetAge() > cnt_reduction_intergeneration_cutoff) || (p2->GetAge() > cnt_reduction_intergeneration_cutoff))){
+    					cnt_adjustment_factor = (1-cnt_reduction_intergeneration);
+    				} else {
+    					// apply uniform community distancing
+    					cnt_adjustment_factor = (1-cnt_reduction_other);
+    				}
+    			}
+    			// account for physical distancing at school
+    			if(pType == Id::K12School){
+    				cnt_adjustment_factor = (1-cnt_reduction_school);
+    			}
+    		}
+
 
 		// account for contact intensity in household clusters
 		if(pType == Id::HouseholdCluster){
@@ -190,31 +195,6 @@ inline double GetContactProbability(const AgeContactProfile& profile, const Pers
         	contact_probability = 0.999;
         }
 
-        // Check if one of the persons is a non-complier to social distancing
-        // in this particular pooltype.
-        if ((not p1->IsNonComplier(pType)) and (not p2->IsNonComplier(pType))) {
-            // account for social distancing at work and in the community
-            if(pType == Id::Workplace){
-            	contact_probability = contact_probability * (1-cnt_reduction_work);
-            }
-
-            if((pType == Id::PrimaryCommunity || pType == Id::SecondaryCommunity)){
-
-    				// apply intergeneration distancing factor if age cutoff is > 0 and at least one age is > cutoff
-    				if((cnt_reduction_intergeneration > 0) &&
-    						((p1->GetAge() > cnt_reduction_intergeneration_cutoff) || (p2->GetAge() > cnt_reduction_intergeneration_cutoff))){
-    					contact_probability = contact_probability * (1-cnt_reduction_intergeneration);
-    				} else {
-    					// apply uniform community distancing
-    					contact_probability = contact_probability * (1-cnt_reduction_other);
-    				}
-
-    			}
-            // account for social distancing at work and in the community
-    			if(pType == Id::K12School){
-    				contact_probability = contact_probability * (1-cnt_reduction_school);
-            }
-        }
 
     	// assume fully connected households
 		if(pType == Id::Household){
