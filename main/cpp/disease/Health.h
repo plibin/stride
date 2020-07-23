@@ -172,6 +172,7 @@ private:
         unsigned int       m_id_index_case;        ///< ID of the index case, given infection
         unsigned int       m_id_infector;          ///< ID of the infector, given infection
 
+        double				m_individual_transmission_probability; ///< Probability of transmission when this individual is infectious & contacts a susceptible individual
         double             m_sympt_cnt_reduction_work_school;  ///< Proportional reduction of presence in work/school pool when symptomatic
         double             m_sympt_cnt_reduction_community;    ///< Proportional reduction of presence in the community pools when symptomatic
         double             m_rel_transmission_asymptomatic;	   ///< Relative reduction of transmission for asymptomatic cases

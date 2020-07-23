@@ -33,6 +33,7 @@ Health::Health(unsigned short int start_infectiousness, unsigned short int start
       m_end_symptomatic(start_symptomatic + time_symptomatic), m_id_index_case(0U), m_id_infector(0U),
 		m_sympt_cnt_reduction_work_school(sympt_cnt_reduction_work_school),
 		m_sympt_cnt_reduction_community(sympt_cnt_reduction_community),
+		m_individual_transmission_probability(0),
 		m_rel_transmission_asymptomatic(rel_transmission_asymptomatic),
 		m_rel_susceptibility_children(rel_susceptibility_children),
 		m_is_isolated(false), m_start_isolation(0)
