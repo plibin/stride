@@ -23,6 +23,7 @@
 #include "RnInfo.h"
 
 #include <trng/discrete_dist.hpp>
+#include <trng/gamma_dist.hpp>
 #include <trng/lcg64.hpp>
 #include <trng/uniform01_dist.hpp>
 #include <trng/uniform_int_dist.hpp>
@@ -85,6 +86,13 @@ public:
         {
                 return ContainerType::at(i).variate_generator(trng::uniform_int_dist(a, b));
         }
+
+        /// Return a generator for gamma-distributed doubles with shape-parameter kappa and scale-parameter theta,
+        /// using i-th random engine.
+        std::function<double()> GetGammaGenerator(double kappa, double theta, unsigned int i = 0U)
+		{
+        			return ContainerType::at(i).variate_generator(trng::gamma_dist(kappa, theta));
+		}
 
         /// Return generator for integers [0, n-1[ with non-negative weights p_j (i=0,..,n-1) using i-th random engine.
         //std::function<int()> GetDiscreteGenerator(const std::vector<double>& weights, unsigned int i = 0U)
