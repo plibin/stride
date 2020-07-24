@@ -139,7 +139,7 @@ void Sim::TimeStep()
 //        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_num_daily_imported_cases, simDay);
 //        }
         if(m_calendar->GetNumberOfImportedCases() > 0){
-        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay);
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay, m_transmission_profile);
         cout << "import cases: " << m_calendar->GetNumberOfImportedCases() << endl;
         }
 

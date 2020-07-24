@@ -274,7 +274,7 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
 								// if h1 infectious, account for susceptibility of p2
 								if (h1.IsInfectious() && h2.IsSusceptible() &&
 									cHandler.HasTransmission(tProb * p1->GetHealth().GetRelativeTransmission(p2->GetAge()))) {
-										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
+										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), tProb);
 										if (TIC)
 												h2.StopInfection();
 										LP::Trans(eventLogger, p1, p2, pType, simDay, h1.GetIdIndexCase());
@@ -283,7 +283,7 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
 								// if h2 infectious, account for susceptibility of p1
 								if (h2.IsInfectious() && h1.IsSusceptible() &&
 									cHandler.HasTransmission(tProb * p2->GetHealth().GetRelativeTransmission(p1->GetAge()))) {
-										h1.StartInfection(h2.GetIdIndexCase(),p2->GetId());
+										h1.StartInfection(h2.GetIdIndexCase(),p2->GetId(), tProb);
 										if (TIC)
 												h1.StopInfection();
 										LP::Trans(eventLogger, p2, p1, pType, simDay, h2.GetIdIndexCase());
@@ -345,7 +345,7 @@ void Infector<LL, TIC, true>::Exec(ContactPool& pool, const AgeContactProfile& p
                                 if (cHandler.HasContactAndTransmission(cProb_p1, tProb * p1->GetHealth().GetRelativeTransmission(p2->GetAge()))) {
                                         auto& h2 = p2->GetHealth();
                                         if (h1.IsInfectious() && h2.IsSusceptible()) {
-                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
+                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), tProb);
 
                                                 // if track&trace is in place, option to register (both) contact(s)
                                                 p1->RegisterContact(p2); //TODO: make use of "log policy" template
