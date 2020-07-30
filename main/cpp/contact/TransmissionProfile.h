@@ -36,6 +36,9 @@ public:
         /// Return transmission probability.
         double GetProbability() const { return m_transmission_probability; }
 
+        /// Return individual transmission probability.
+        double DrawIndividualProbability() const;
+
         /// Initialize.
         void Initialize(const boost::property_tree::ptree& configPt, const boost::property_tree::ptree& diseasePt);
 

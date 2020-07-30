@@ -150,6 +150,11 @@ public:
         	return rel_transmission;
         }
 
+        /// Get individual transmission probability, based on health state and age of contact
+        double GetIndividualTransmissionProbability(unsigned int age_contact) {
+        		return m_individual_transmission_probability * GetRelativeTransmission(age_contact);
+        }
+
 private:
         /// Get the disease counter.
         unsigned short int GetDiseaseCounter() const { return m_disease_counter; }

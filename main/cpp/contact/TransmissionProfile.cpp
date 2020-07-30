@@ -64,6 +64,12 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
 			// Use transmission probability as input parameter
 			m_transmission_probability = configPt.get<double>("run.transmission_probability");
 		}
+
+}
+
+double TransmissionProfile::DrawIndividualProbability() const
+{
+	return m_transmission_probability;
 }
 
 } // namespace stride
