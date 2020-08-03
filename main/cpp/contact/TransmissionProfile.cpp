@@ -22,19 +22,20 @@
 
 #include <cmath>
 
+
 namespace stride {
 
 using namespace std;
 using namespace boost::property_tree;
 
-void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt)
+void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt, util::RnMan& rnMan)
 {
 		// Check wether to use r0 or transmission probability
-		boost::optional<double> r0_as_input = configPt.get_optional<double>("run.r0");
+		boost::optional<double> r0AsInput = configPt.get_optional<double>("run.r0");
 
-		if (r0_as_input) {
+		if (r0AsInput) {
 			// parse config file
-			const auto r0 = *r0_as_input;
+			const auto r0 = *r0AsInput;
 			const auto b0 = diseasePt.get<double>("disease.transmission.b0");
 			const auto b1 = diseasePt.get<double>("disease.transmission.b1");
 			const auto b2 = diseasePt.get<double>("disease.transmission.b2");
@@ -65,11 +66,29 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
 			m_transmission_probability = configPt.get<double>("run.transmission_probability");
 		}
 
+		// Check whether transmission probability follows a distribution or is constant
+		boost::optional<string> tProbDistribution = configPt.get_optional<string>("run.transmission_probability_distribution");
+		if (tProbDistribution) {
+			m_transmission_probability_distribution = *tProbDistribution;
+			// Get target overdispersion
+			m_transmission_probability_distribution_overdispersion = configPt.get<double>("run.transmission_probability_distribution_overdispersion", 0);
+		}
+
+		m_rn_man_p = std::make_unique<util::RnMan>(rnMan);
+
 }
 
 double TransmissionProfile::DrawIndividualProbability() const
 {
-	return m_transmission_probability;
+	if (m_transmission_probability_distribution == "Constant") {
+		return m_transmission_probability;
+	} else {
+		double theta = m_transmission_probability_distribution_overdispersion / m_transmission_probability;
+		auto generator = m_rn_man_p->GetGammaGenerator(m_transmission_probability_distribution_overdispersion, theta);
+		double individual_probability = generator();
+		return individual_probability;
+
+	}
 }
 
 } // namespace stride

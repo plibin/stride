@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "util/RnMan.h"
+
 #include <boost/property_tree/ptree.hpp>
 
 namespace stride {
@@ -30,8 +32,8 @@ namespace stride {
 class TransmissionProfile
 {
 public:
-        /// Initialize.
-        TransmissionProfile() : m_transmission_probability(0.0) {}
+        TransmissionProfile() : m_transmission_probability(0.0), m_transmission_probability_distribution("Constant"),
+								m_transmission_probability_distribution_overdispersion(0), m_rn_man_p() {}
 
         /// Return transmission probability.
         double GetProbability() const { return m_transmission_probability; }
@@ -40,10 +42,14 @@ public:
         double DrawIndividualProbability() const;
 
         /// Initialize.
-        void Initialize(const boost::property_tree::ptree& configPt, const boost::property_tree::ptree& diseasePt);
+        void Initialize(const boost::property_tree::ptree& configPt, const boost::property_tree::ptree& diseasePt, util::RnMan& rnMan);
 
 private:
         double m_transmission_probability;
+        std::string m_transmission_probability_distribution;
+        double m_transmission_probability_distribution_overdispersion;
+
+        std::unique_ptr<util::RnMan> m_rn_man_p;	// FIXME is this ok cfr. splitting of random number stream?
 };
 
 } // namespace stride

@@ -29,6 +29,7 @@
 #include <trng/uniform_int_dist.hpp>
 #include <functional>
 #include <pcg/pcg_random.hpp>
+#include <random>
 #include <randutils/randutils.hpp>
 #include <string>
 #include <vector>
@@ -91,7 +92,8 @@ public:
         /// using i-th random engine.
         std::function<double()> GetGammaGenerator(double kappa, double theta, unsigned int i = 0U)
 		{
-        			return ContainerType::at(i).variate_generator(trng::gamma_dist(kappa, theta));
+        			// Use gamma distribution from standard library instead of trng, as trng manual indicates it cannot handle kappa < 1.
+        			return ContainerType::at(i).variate_generator(std::gamma_distribution<double>(kappa, theta));
 		}
 
         /// Return generator for integers [0, n-1[ with non-negative weights p_j (i=0,..,n-1) using i-th random engine.
