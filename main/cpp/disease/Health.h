@@ -139,7 +139,7 @@ public:
         double GetSymptomaticCntReductionCommunity() const { return m_sympt_cnt_reduction_community; };
 
         /// Get relative transmission based on health state and age of contact
-        double GetRelativeTransmission(unsigned int age_contact) {
+        double GetRelativeTransmission(unsigned int age_contact) const {
 
         	//if(!IsInfectious()) {return 0;}
 
@@ -151,11 +151,11 @@ public:
         }
 
         /// Get individual transmission probability, based on health state and age of contact
-        double GetIndividualTransmissionProbability(unsigned int age_contact) {
+        double GetIndividualTransmissionProbability(unsigned int age_contact) const {
         		return m_individual_transmission_probability * GetRelativeTransmission(age_contact);
         }
 
-        double GetIndividualTransmissionProbability() {
+        double GetIndividualTransmissionProbability() const {
         		return m_individual_transmission_probability;
         }
 

@@ -82,12 +82,17 @@ double TransmissionProfile::DrawIndividualProbability() const
 {
 	if (m_transmission_probability_distribution == "Constant") {
 		return m_transmission_probability;
-	} else {
+	} else if (m_transmission_probability_distribution == "Gamma") {
 		double theta = m_transmission_probability_distribution_overdispersion / m_transmission_probability;
 		auto generator = m_rn_man_p->GetGammaGenerator(m_transmission_probability_distribution_overdispersion, theta);
 		double individual_probability = generator();
-		return individual_probability;
-
+		if (individual_probability < 1) { // FIXME is it OK to truncate distribution like this?
+			return individual_probability;
+		} else {
+			return 1;
+		}
+	} else {
+		return m_transmission_probability;
 	}
 }
 
