@@ -9,6 +9,18 @@ def get_contact_rates(pooltype, contact_rate_tree, maxAge):
     contact_rates = []
     for age in range(maxAge + 1):
         contact_rates.append([0] * (maxAge + 1))
+        #contact_rates.append(0)
+
+    # Get contact rates for the right pooltype from xml tree
+    '''max_participant_age = 0
+    pooltype_contacts = contact_rate_tree.find(pooltype)
+    # FIXME This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
+    for participant in pooltype_contacts.findall("participant"):
+        participant_age = int(participant.find("age").text)
+        if (participant_age > max_participant_age):
+            max_participant_age = participant_age
+        contact_rate = float(participant.find("contacts/contact/rate").text)
+        contact_rates[participant_age] = contact_rate'''
 
     # Get contact rates for the right pooltype from xml tree
     max_participant_age = 0
@@ -22,7 +34,12 @@ def get_contact_rates(pooltype, contact_rate_tree, maxAge):
             age2 = int(contact.find("age").text)
             contact_rate = float(contact.find("rate").text)
             contact_rates[age1][age2] = contact_rate
-
+    '''
+    # Fill in contact rates for ages > max_participant_age
+    # Set contact_rate[age] = contact_rate[max_participant_age] if age > max_participant_age
+    for age in range(max_participant_age + 1, maxAge + 1):
+        contact_rates[age] = contact_rates[max_participant_age]
+    '''
     # Fill in contact rates for ages > max_participant_age
     # Set contact rage [age1, age2] = [max_participant_age, age2] if age2 <= max_participant_age
     # Else [age1, age2] = [max_participant_age, max_participant_age]
@@ -34,7 +51,6 @@ def get_contact_rates(pooltype, contact_rate_tree, maxAge):
             else:
                 contact_rates[age1][age2] = contact_rates[max_participant_age][max_participant_age]
                 contact_rates[age2][age1] = contact_rates[max_participant_age][max_participant_age]
-
     return contact_rates
 
 def add_to_pool(pools, pool_id, person_id, age):
@@ -58,14 +74,22 @@ def get_effective_contacts(person_id, age, pools, pooltype, pool_id, contact_rat
             if member_id != person_id: # Check that this is not the same person
                 contact_rate = contact_rates[pooltype][age][member_age]
                 contact_probability = contact_rate / pool_size
+                '''# FIXME This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
+                contact_rate1 = contact_rates[pooltype][age]
+                contact_rate2 = contact_rates[pooltype][member_age]
+                contact_probability = min(contact_rate1, contact_rate2) / pool_size'''
                 # Households are assumed to be fully connected in Stride
                 if pooltype == "household":
-                    contact_probability = 1
+                    contact_probability = 0.999
+                    #contact_probability = 1
+                if contact_probability >= 1:
+                    print(contact_probability)
+                    #contact_probability = 0.999
                 effective_contacts += 1 - ((1 - (transmission_probability * contact_probability))**infectious_period_length)
     return effective_contacts
 
 def main(population_file, contact_matrix_file, infectious_period_length, transmission_probabilities):
-    maxAge = 110
+    maxAge = 111
 
     ############################################################################
     # Read contact matrices from file                                          #
