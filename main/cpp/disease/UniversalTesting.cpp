@@ -239,6 +239,17 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
                                                    simDay);
             }
           }
+        } else if (m_unitest_isolation_strategy == "isolate-indiv") {
+          for (Person* indiv : household) {
+            auto h = indiv->GetHealth();
+            if (h.IsInfected() && h.IsPcrDetectable(m_unitest_detectable_delay)) {
+              bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
+              if (pcr_test_positive) {
+                unsigned int start = simDay + 1 + m_unitest_isolation_delay;
+                indiv->Isolate(simDay, start, start + 7);
+              }
+            }
+          }
         } else if (m_unitest_isolation_strategy == "trace") {
           for (Person* indiv : household) {
             auto h = indiv->GetHealth();
