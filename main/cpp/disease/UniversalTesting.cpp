@@ -245,8 +245,11 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
             if (h.IsInfected() && h.IsPcrDetectable(m_unitest_detectable_delay)) {
               bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
               if (pcr_test_positive) {
-                unsigned int start = simDay + 1 + m_unitest_isolation_delay;
-                indiv->Isolate(simDay, start, start + 7);
+                bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
+                if (isolation_compliance) {
+                  unsigned int start = simDay + 1;
+                  indiv->Isolate(simDay, start, start + 7);
+                }
               }
             }
           }
