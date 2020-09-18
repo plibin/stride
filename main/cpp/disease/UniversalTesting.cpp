@@ -240,12 +240,12 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
             }
           }
         } else if (m_unitest_isolation_strategy == "isolate-indiv") {
+          bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
           for (Person* indiv : household) {
             auto h = indiv->GetHealth();
             if (h.IsInfected() && h.IsPcrDetectable(m_unitest_detectable_delay)) {
               bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
               if (pcr_test_positive) {
-                bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
                 if (isolation_compliance) {
                   unsigned int start = simDay + 1;
                   indiv->Isolate(simDay, start, start + 7);
