@@ -227,7 +227,7 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
           bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
           if (isolation_compliance) {
             for (const auto& indiv : household) {
-                unsigned int start = simDay + 1 + m_unitest_isolation_delay;
+                unsigned int start = simDay + m_unitest_isolation_delay;
                 indiv->Isolate(simDay, start, start + 7);
                 logger->info("[UNITEST-ISOLATE] pool_id={} household_id={} indiv_id={} infected?={} isolation_delay={} sim_day={}",
                 //logger->info("[UNITEST-ISOLATE] {} {} {} {} {} {}",
@@ -247,7 +247,7 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
               bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
               if (pcr_test_positive) {
                 if (isolation_compliance) {
-                  unsigned int start = simDay + 1;
+                  unsigned int start = simDay + m_unitest_isolation_delay;
                   indiv->Isolate(simDay, start, start + 7);
                 }
               }
