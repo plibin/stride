@@ -38,7 +38,7 @@ INSTALL( FILES
             rStride_r0.R 	
             rStride_intervention_baseline.R
             rStride_intervention.R
-            rStride_geoclustering.R			 
+            rStride_superspreading.R			 
             rStride_pop.R				 
 
 	DESTINATION ${BIN_INSTALL_LOCATION}  

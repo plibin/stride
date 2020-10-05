@@ -8,49 +8,23 @@ def get_contact_rates(pooltype, contact_rate_tree, maxAge):
     # Create matrix of zeroes
     contact_rates = []
     for age in range(maxAge + 1):
-        contact_rates.append([0] * (maxAge + 1))
-        #contact_rates.append(0)
+        contact_rates.append(0)
 
     # Get contact rates for the right pooltype from xml tree
     max_participant_age = 0
     pooltype_contacts = contact_rate_tree.find(pooltype)
-    '''# FIXME This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
+    # This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
     for participant in pooltype_contacts.findall("participant"):
         participant_age = int(participant.find("age").text)
         if (participant_age > max_participant_age):
             max_participant_age = participant_age
         contact_rate = float(participant.find("contacts/contact/rate").text)
-        contact_rates[participant_age] = contact_rate'''
-
-    # Get contact rates for the right pooltype from xml tree
-    max_participant_age = 0
-    pooltype_contacts = contact_rate_tree.find(pooltype)
-    for participant in pooltype_contacts.findall("participant"):
-        age1 = int(participant.find("age").text)
-        if (age1 > max_participant_age):
-            max_participant_age = age1
-        contacts = participant.find("contacts")
-        for contact in contacts.findall("contact"):
-            age2 = int(contact.find("age").text)
-            contact_rate = float(contact.find("rate").text)
-            contact_rates[age1][age2] = contact_rate
-
-    '''# Fill in contact rates for ages > max_participant_age
-    # Set contact_rate[age] = contact_rate[max_participant_age] if age > max_participant_age
-    for age in range(max_participant_age + 1, maxAge + 1):
-        contact_rates[age] = contact_rates[max_participant_age]'''
+        contact_rates[participant_age] = contact_rate
 
     # Fill in contact rates for ages > max_participant_age
-    # Set contact rage [age1, age2] = [max_participant_age, age2] if age2 <= max_participant_age
-    # Else [age1, age2] = [max_participant_age, max_participant_age]
-    for age1 in range(max_participant_age + 1, maxAge + 1):
-        for age2 in range(maxAge + 1):
-            if age2 <= max_participant_age:
-                contact_rates[age1][age2] = contact_rates[max_participant_age][age2]
-                contact_rates[age2][age1] = contact_rates[age2][max_participant_age]
-            else:
-                contact_rates[age1][age2] = contact_rates[max_participant_age][max_participant_age]
-                contact_rates[age2][age1] = contact_rates[max_participant_age][max_participant_age]
+    # Set contact_rate[age] = contact_rate[max_participant_age] if age > max_participant_age
+    for age in range(max_participant_age + 1, maxAge + 1):
+        contact_rates[age] = contact_rates[max_participant_age]
 
     return contact_rates
 
@@ -74,19 +48,18 @@ def get_effective_contacts(person_id, age, pools, pooltype, pool_id, contact_rat
                 member_id = member[0]
                 member_age = member[1]
                 if member_id != person_id: # Check that this is not the same person
-                    contact_rate = contact_rates[pooltype][age][member_age]
-                    of_same_age_in_pool = sum([1 for x in pool_members if x[1] == member_age])
-                    contact_probability = contact_rate / of_same_age_in_pool
-                    # FIXME This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
-                    #contact_rate1 = contact_rates[pooltype][age]
-                    #contact_rate2 = contact_rates[pooltype][member_age]
-                    #contact_probability = min(contact_rate1, contact_rate2) / pool_size
-                    # Households are assumed to be fully connected in Stride
+                    # This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
+                    contact_probability = 0
                     if pooltype == "household":
+                        # Households are assumed to be fully connected in Stride
                         contact_probability = 0.999
-                        #contact_probability = 1
-                    if contact_probability >= 1:
-                        contact_probability = 0.999
+                    else:
+                        contact_rate1 = contact_rates[pooltype][age]
+                        contact_rate2 = contact_rates[pooltype][member_age]
+                        contact_probability = min(contact_rate1, contact_rate2) / pool_size
+
+                        if contact_probability >= 1:
+                            contact_probability = 0.999
                     effective_contacts += 1 - ((1 - (transmission_probability * contact_probability))**infectious_period)
     # Assuming uniform distribution of infectious period lengths
     effective_contacts /= len(infectious_period_lengths)
@@ -127,7 +100,7 @@ def main(population_file, contact_matrix_file, infectious_period_lengths, transm
     secondary_communities = {}
 
     population = []
-    person_id = 1
+    person_id = 0
 
     with open(population_file) as csvfile:
         reader = csv.DictReader(csvfile)
@@ -155,10 +128,13 @@ def main(population_file, contact_matrix_file, infectious_period_lengths, transm
     # if infected in a completely susceptible population                       #
     # (cfr. theoretical description by A. Torneri)                             #
     ############################################################################
+
+    effective_contacts_by_tp = {}
     for tp in transmission_probabilities:
         all_effective_contacts = []
-        for person in random.choices(population, k=100):
-            # Get # of effective contacts in each of the contact pools
+        pop_sample = [population[i] for i in index_case_ids[tp]]
+
+        for person in population:            # Get # of effective contacts in each of the contact pools
             # to which this person belongs
             hh_effective_contacts = get_effective_contacts(person["id"], person["age"],
                                                             households, "household", person["household_id"],
@@ -180,7 +156,8 @@ def main(population_file, contact_matrix_file, infectious_period_lengths, transm
             all_effective_contacts.append(total_effective_contacts)
 
         mean_effective_contacts = sum(all_effective_contacts) / len(all_effective_contacts)
-        print("Transmission probability {}: {} effective contacts on average".format(tp, mean_effective_contacts))
+        effective_contacts_by_tp[tp] = mean_effective_contacts
+    print(effective_contacts_by_tp)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
