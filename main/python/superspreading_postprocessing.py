@@ -15,7 +15,7 @@ def get_experiment_ids(output_dir, scenario_name):
             experiment_ids.append(exp_id)
     return experiment_ids
 
-def get_effective_r(output_dir, scenario_name, experiment_id):
+def get_secondary_cases_by_individual(output_dir, scenario_name, experiment_id):
     log_file = os.path.join(output_dir, scenario_name, "exp" + "{:04}".format(experiment_id), "event_log.txt")
     potential_infectors = {}
     with open(log_file) as f:
@@ -40,32 +40,48 @@ def get_effective_r(output_dir, scenario_name, experiment_id):
                     potential_infectors[infector_id] += 1
     return potential_infectors
 
+def plot_secondary_cases_frequency(scenario_name, all_secondary_cases):
+    for sim_run in all_secondary_cases:
+        secondary_cases = sim_run.values()
+        total_infections = sum(secondary_cases)
+        # Count frequencies of number of secondary cases / person
+        counter = collections.Counter(secondary_cases)
+        # Scale frequencies to percentage of total infected cases
+        if total_infections > 0:
+            for num_secondary_cases in counter:
+                counter[num_secondary_cases] = (counter[num_secondary_cases] / total_infections) * 100
+        num_secondary_cases_sorted = list(counter.keys())
+        num_secondary_cases_sorted.sort()
+        # Plot results for this simulation run
+        plt.plot(num_secondary_cases_sorted, [counter[x] for x in num_secondary_cases_sorted], "o")
+    plt.xlabel("Number of secondary cases")
+    plt.xlim(-2, 65)
+    plt.ylabel("Percentage of infected individuals")
+    plt.ylim(-2, 102)
+    plt.show()
+
+def plot_outbreak_size_frequency(all_secondary_cases_by_scenario):
+    scenario_names = []
+    all_outbreak_sizes = []
+    for scenario in all_secondary_cases_by_scenario:
+        scenario_names.append(scenario)
+        all_outbreak_sizes.append([sum(x.values()) for x in all_secondary_cases_by_scenario[scenario]])
+    plt.hist(all_outbreak_sizes, histtype="barstacked")
+    plt.xlabel("Outbreak size")
+    plt.ylabel("Frequency")
+    plt.legend(scenario_names)
+    plt.show()
 
 def main(output_dir, scenario_names):
+    all_secondary_cases = {}
     for scenario in scenario_names:
-        print(scenario)
         exp_ids = get_experiment_ids(output_dir, scenario)
         with multiprocessing.Pool(processes=4) as pool:
-            effective_rs = pool.starmap(get_effective_r, [(output_dir, scenario, exp_id) for exp_id in exp_ids])
-            for result in effective_rs:
-                total_infections = sum(result.values())
-                secondary_cases = result.values()
-                counter = collections.Counter(secondary_cases)
-                if total_infections > 0:
-                    for key in counter:
-                        counter[key] = (counter[key] / total_infections) * 100
-                keys_sorted = list(counter.keys())
-                keys_sorted.sort()
-
-                plt.plot(keys_sorted, [counter[x] for x in keys_sorted], "o")
-            plt.xlabel("Number of secondary cases")
-            plt.xlim(-2, 65)
-            plt.ylabel("Percentage of infected individuals")
-            plt.ylim(-2, 102)
-            plt.show()
-            total_infections = [sum(x.values()) for x in effective_rs]
-            #plt.hist(total_infections)
-            #plt.show()
+            secondary_cases = pool.starmap(get_secondary_cases_by_individual,
+                                            [(output_dir, scenario, exp_id) for exp_id in exp_ids])
+            all_secondary_cases[scenario] = secondary_cases
+            plot_secondary_cases_frequency(scenario, secondary_cases)
+            '''
             #for result in effective_rs:
                 ##total_infections = sum(result.values())
                 #print(total_infections)
@@ -73,10 +89,8 @@ def main(output_dir, scenario_names):
                 #plt.title(scenario)
                 #plt.show()
                 #mean_er = sum(list(result.values())) / len(list(result.values))
-                #print(mean_er)
-        # TODO effective R?
-        # TODO distribution of individual R0?
-        # TODO outbreak size? outbreak frequency?
+                #print(mean_er)'''
+    plot_outbreak_size_frequency(all_secondary_cases)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
