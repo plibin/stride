@@ -25,8 +25,16 @@
 ############################################################################ #
 # Clear work environment
 rm(list=ls())
- 
-run_simulations <- function(scenario_name, tp_distribution, tp_overdispersion, num_runs) {
+
+# TODO cnt_reduction_school?
+# TODO contact tracing
+# TODO contact rate distribution 
+run_simulations <- function(scenario_name, 
+                            tp_distribution, tp_overdispersion, 
+                            cnt_reduction_workplace,
+                            cnt_reduction_other,
+                            holidays_file,
+                            num_runs) {
   exp_design <- expand.grid(
       transmission_probability                      = 0.08,
       num_days                                      = 30,
@@ -36,13 +44,13 @@ run_simulations <- function(scenario_name, tp_distribution, tp_overdispersion, n
       population_file                               = "pop_belgium3000k_c500_teachers_censushh.csv",
       age_contact_matrix_file                       = "contact_matrix_flanders_conditional_teachers.xml",
       start_date                                    = "2020-09-01",
-      holidays_file                                 = 'holidays_none.json',
+      holidays_file                                 = holidays_file,
       event_log_level                               = "Transmissions",
       num_participants_survey                       = 0,
       school_system_adjusted                        = 0,
       telework_probability                          = 0,
-      cnt_reduction_workplace                       = 0,
-      cnt_reduction_other                           = 0,
+      cnt_reduction_workplace                       = cnt_reduction_workplace,
+      cnt_reduction_other                           = cnt_reduction_other,
       compliance_delay_workplace                    = 0,
       compliance_delay_other                        = 0,
       num_daily_imported_cases                      = 0,
@@ -69,14 +77,10 @@ run_simulations <- function(scenario_name, tp_distribution, tp_overdispersion, n
       
   )
     
-#    exp_design <- expand.grid(
-
-#      
-#    )
-#    
 # add a unique seed for each run
 #set.seed(125)
-exp_design$rng_seed <- sample(nrow(exp_design))
+#exp_design$rng_seed <- sample(nrow(exp_design))
+exp_design$rng_seed <- as.numeric(floor(runif(nrow(exp_design), min=-(.Machine$integer.max), max=.Machine$integer.max)))
  
 # run rSTRIDE
 project_dir <- run_rStride(exp_design          = exp_design,
@@ -90,13 +94,55 @@ project_dir <- run_rStride(exp_design          = exp_design,
 # Load rStride
 source('./bin/rstride/rStride.R')
 
+# Simulations without interventions 
 run_simulations(scenario_name = "baseline", 
                 tp_distribution = "None", 
                 tp_overdispersion =  0, 
+                cnt_reduction_workplace = 0,
+                cnt_reduction_other = 0,
+                holidays_file = "holidays_none.json",
                 num_runs = 50)
 run_simulations(scenario_name = "superspreading_10", 
                 tp_distribution = "Gamma", 
                 tp_overdispersion =  0.1, 
+                cnt_reduction_workplace = 0,
+                cnt_reduction_other = 0,
+                holidays_file = "holidays_none.json",
+                num_runs = 50)
+run_simulations(scenario_name = "superspreading_20", 
+                tp_distribution = "Gamma", 
+                tp_overdispersion =  0.5, 
+                cnt_reduction_workplace = 0,
+                cnt_reduction_other = 0,
+                holidays_file = "holidays_none.json",
+                num_runs = 50)
+run_simulations(scenario_name = "superspreading_1000", 
+                tp_distribution = "Gamma", 
+                tp_overdispersion =  10, 
+                cnt_reduction_workplace = 0,
+                cnt_reduction_other = 0,
+                holidays_file = "holidays_none.json",
                 num_runs = 50)
 
+# Simulations with social distancing 
+#run_simulations(scenario_name = "baseline_cnt_reduction", 
+#                tp_distribution = "None", 
+#                tp_overdispersion =  0, 
+#                cnt_reduction_workplace = 0.4,
+#                cnt_reduction_other = 0.6,
+#                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+#                num_runs = 50)
+#run_simulations(scenario_name = "superspreading_10_cnt_reduction", 
+#                tp_distribution = "Gamma", 
+#                tp_overdispersion =  0.1, 
+#                cnt_reduction_workplace = 0.4,
+#                cnt_reduction_other = 0.6,
+#                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+#                num_runs = 50)
+
+
+# Simulations with contact tracing 
+
 # TODO range for overdispersion
+# TODO effect on contact tracing 
+# TODO heterogeneity in contact behavior

@@ -55,9 +55,9 @@ def plot_secondary_cases_frequency(scenario_name, all_secondary_cases):
         # Plot results for this simulation run
         plt.plot(num_secondary_cases_sorted, [counter[x] for x in num_secondary_cases_sorted], "o")
     plt.xlabel("Number of secondary cases")
-    plt.xlim(-2, 65)
+    #plt.xlim(-2, 65)
     plt.ylabel("Percentage of infected individuals")
-    plt.ylim(-2, 102)
+    plt.ylim(-2, 120)
     plt.show()
 
 def plot_outbreak_size_frequency(all_secondary_cases_by_scenario):
@@ -72,6 +72,21 @@ def plot_outbreak_size_frequency(all_secondary_cases_by_scenario):
     plt.legend(scenario_names)
     plt.show()
 
+def get_individual_transmission_probabilities(output_dir, scenario_name, experiment_id):
+    tps = []
+    log_file = os.path.join(output_dir, scenario_name, "exp" + "{:04}".format(experiment_id), "event_log.txt")
+    with open(log_file) as f:
+        for line in f:
+            line = line.split(' ')
+            tag = line[0]
+            if tag == "[PRIM]":
+                tp = float(line[13])
+                tps.append(tp)
+            elif tag == "[TRAN]":
+                tp = float(line[13])
+                tps.append(tp)
+    return tps
+
 def main(output_dir, scenario_names):
     all_secondary_cases = {}
     for scenario in scenario_names:
@@ -81,15 +96,17 @@ def main(output_dir, scenario_names):
                                             [(output_dir, scenario, exp_id) for exp_id in exp_ids])
             all_secondary_cases[scenario] = secondary_cases
             plot_secondary_cases_frequency(scenario, secondary_cases)
-            '''
-            #for result in effective_rs:
-                ##total_infections = sum(result.values())
-                #print(total_infections)
-                #plt.hist([x / len(result) for x in result.values()])
-                #plt.title(scenario)
-                #plt.show()
-                #mean_er = sum(list(result.values())) / len(list(result.values))
-                #print(mean_er)'''
+            individual_transmission_probabilities = pool.starmap(get_individual_transmission_probabilities,
+                                            [(output_dir, scenario, exp_id) for exp_id in exp_ids])
+            for run in individual_transmission_probabilities:
+                counter = collections.Counter(run)
+                print(counter)
+                tps_sorted = list(counter.keys())
+                tps_sorted.sort()
+                plt.plot(tps_sorted, [counter[x] for x in tps_sorted], "o")
+            plt.title(scenario)
+            plt.show()
+
     plot_outbreak_size_frequency(all_secondary_cases)
 
 if __name__=="__main__":
