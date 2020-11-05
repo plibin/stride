@@ -21,6 +21,7 @@
 #include "TransmissionProfile.h"
 
 #include <cmath>
+#include <boost/math/distributions/gamma.hpp>
 
 
 namespace stride {
@@ -86,14 +87,21 @@ double TransmissionProfile::DrawIndividualProbability() const
 	if (m_transmission_probability_distribution == "Constant") {
 		return m_transmission_probability;
 	} else if (m_transmission_probability_distribution == "Gamma") {
-		double theta = m_transmission_probability_distribution_overdispersion / m_transmission_probability;
-		auto generator = m_rn_man_p->GetGammaGenerator(m_transmission_probability_distribution_overdispersion, theta);
-		double individual_probability = generator();
-		if (individual_probability < 1) { // FIXME is it OK to truncate distribution like this?
-			return individual_probability;
-		} else {
-			return 1;
-		}
+		// Generate truncated (between 0 and 1) gamma distribution
+		// Based on script https://rdrr.io/cran/RGeode/src/R/rgammatr.R
+		double shape = m_transmission_probability_distribution_overdispersion;
+		double scale = m_transmission_probability / shape;
+
+		boost::math::gamma_distribution gamma_dist = boost::math::gamma_distribution<double>(shape, scale);
+
+		double cdf1 = cdf(gamma_dist, 0.0);
+		double cdf2 = cdf(gamma_dist, 1.0);
+
+		auto generator = m_rn_man_p->GetUniform01Generator();
+		double individual_probability = quantile(gamma_dist, cdf1 + generator() * (cdf2 - cdf1));
+
+		return individual_probability;
+
 	} else {
 		return m_transmission_probability;
 	}

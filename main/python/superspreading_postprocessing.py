@@ -55,9 +55,10 @@ def plot_secondary_cases_frequency(scenario_name, all_secondary_cases):
         # Plot results for this simulation run
         plt.plot(num_secondary_cases_sorted, [counter[x] for x in num_secondary_cases_sorted], "o")
     plt.xlabel("Number of secondary cases")
-    #plt.xlim(-2, 65)
+    plt.xlim(-2, 85)
     plt.ylabel("Percentage of infected individuals")
-    plt.ylim(-2, 120)
+    plt.ylim(-2, 105)
+    plt.title(scenario_name)
     plt.show()
 
 def plot_outbreak_size_frequency(all_secondary_cases_by_scenario):
@@ -96,16 +97,12 @@ def main(output_dir, scenario_names):
                                             [(output_dir, scenario, exp_id) for exp_id in exp_ids])
             all_secondary_cases[scenario] = secondary_cases
             plot_secondary_cases_frequency(scenario, secondary_cases)
-            individual_transmission_probabilities = pool.starmap(get_individual_transmission_probabilities,
-                                            [(output_dir, scenario, exp_id) for exp_id in exp_ids])
-            for run in individual_transmission_probabilities:
-                counter = collections.Counter(run)
-                print(counter)
-                tps_sorted = list(counter.keys())
-                tps_sorted.sort()
-                plt.plot(tps_sorted, [counter[x] for x in tps_sorted], "o")
-            plt.title(scenario)
-            plt.show()
+            #individual_transmission_probabilities = pool.starmap(get_individual_transmission_probabilities,
+            #                                [(output_dir, scenario, exp_id) for exp_id in exp_ids])
+            #for run in individual_transmission_probabilities:
+            #   plt.hist(run)
+            #    plt.title(scenario)
+            #    plt.show()
 
     plot_outbreak_size_frequency(all_secondary_cases)
 

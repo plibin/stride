@@ -36,8 +36,8 @@ run_simulations <- function(scenario_name,
                             holidays_file,
                             num_runs) {
   exp_design <- expand.grid(
-      transmission_probability                      = 0.08,
-      num_days                                      = 30,
+      transmission_probability                      = 0.07,
+      num_days                                      = 45,
       rng_seed                                      = seq(num_runs),
       num_infected_seeds                            = 1, 
       disease_config_file                           = "disease_covid19_age.xml",
@@ -79,8 +79,8 @@ run_simulations <- function(scenario_name,
     
 # add a unique seed for each run
 #set.seed(125)
-#exp_design$rng_seed <- sample(nrow(exp_design))
-exp_design$rng_seed <- as.numeric(floor(runif(nrow(exp_design), min=-(.Machine$integer.max), max=.Machine$integer.max)))
+exp_design$rng_seed <- sample(nrow(exp_design))
+#exp_design$rng_seed <- as.numeric(floor(runif(nrow(exp_design), min=-(.Machine$integer.max), max=.Machine$integer.max)))
  
 # run rSTRIDE
 project_dir <- run_rStride(exp_design          = exp_design,
@@ -94,51 +94,65 @@ project_dir <- run_rStride(exp_design          = exp_design,
 # Load rStride
 source('./bin/rstride/rStride.R')
 
-# Simulations without interventions 
-run_simulations(scenario_name = "baseline", 
-                tp_distribution = "None", 
-                tp_overdispersion =  0, 
-                cnt_reduction_workplace = 0,
-                cnt_reduction_other = 0,
-                holidays_file = "holidays_none.json",
-                num_runs = 50)
-run_simulations(scenario_name = "superspreading_10", 
-                tp_distribution = "Gamma", 
-                tp_overdispersion =  0.1, 
-                cnt_reduction_workplace = 0,
-                cnt_reduction_other = 0,
-                holidays_file = "holidays_none.json",
-                num_runs = 50)
-run_simulations(scenario_name = "superspreading_20", 
-                tp_distribution = "Gamma", 
-                tp_overdispersion =  0.5, 
-                cnt_reduction_workplace = 0,
-                cnt_reduction_other = 0,
-                holidays_file = "holidays_none.json",
-                num_runs = 50)
-run_simulations(scenario_name = "superspreading_1000", 
-                tp_distribution = "Gamma", 
-                tp_overdispersion =  10, 
-                cnt_reduction_workplace = 0,
-                cnt_reduction_other = 0,
-                holidays_file = "holidays_none.json",
-                num_runs = 50)
+# # Simulations without interventions 
+# run_simulations(scenario_name = "baseline", 
+#                 tp_distribution = "None", 
+#                 tp_overdispersion =  0, 
+#                 cnt_reduction_workplace = 0,
+#                 cnt_reduction_other = 0,
+#                 holidays_file = "holidays_none.json",
+#                 num_runs = 50)
+# run_simulations(scenario_name = "superspreading_10", 
+#                 tp_distribution = "Gamma", 
+#                 tp_overdispersion =  0.1, 
+#                 cnt_reduction_workplace = 0,
+#                 cnt_reduction_other = 0,
+#                 holidays_file = "holidays_none.json",
+#                 num_runs = 50)
+# run_simulations(scenario_name = "superspreading_100", 
+#                 tp_distribution = "Gamma", 
+#                 tp_overdispersion =  1, 
+#                 cnt_reduction_workplace = 0,
+#                 cnt_reduction_other = 0,
+#                 holidays_file = "holidays_none.json",
+#                 num_runs = 50)
+# run_simulations(scenario_name = "superspreading_1000", 
+#                 tp_distribution = "Gamma", 
+#                 tp_overdispersion =  10, 
+#                 cnt_reduction_workplace = 0,
+#                 cnt_reduction_other = 0,
+#                 holidays_file = "holidays_none.json",
+#                 num_runs = 50)
 
 # Simulations with social distancing 
-#run_simulations(scenario_name = "baseline_cnt_reduction", 
-#                tp_distribution = "None", 
-#                tp_overdispersion =  0, 
-#                cnt_reduction_workplace = 0.4,
-#                cnt_reduction_other = 0.6,
-#                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
-#                num_runs = 50)
-#run_simulations(scenario_name = "superspreading_10_cnt_reduction", 
-#                tp_distribution = "Gamma", 
-#                tp_overdispersion =  0.1, 
-#                cnt_reduction_workplace = 0.4,
-#                cnt_reduction_other = 0.6,
-#                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
-#                num_runs = 50)
+run_simulations(scenario_name = "baseline_cnt_reduction", 
+                tp_distribution = "None", 
+                tp_overdispersion =  0, 
+                cnt_reduction_workplace = 0.4,
+                cnt_reduction_other = 0.6,
+                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+                num_runs = 50)
+run_simulations(scenario_name = "superspreading_10_cnt_reduction", 
+                tp_distribution = "Gamma", 
+                tp_overdispersion =  0.1, 
+                cnt_reduction_workplace = 0.4,
+                cnt_reduction_other = 0.6,
+                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+                num_runs = 50)
+run_simulations(scenario_name = "superspreading_100_cnt_reduction", 
+                tp_distribution = "Gamma", 
+                tp_overdispersion =  1, 
+                cnt_reduction_workplace = 0.4,
+                cnt_reduction_other = 0.6,
+                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+                num_runs = 50)
+run_simulations(scenario_name = "superspreading_1000_cnt_reduction", 
+                tp_distribution = "Gamma", 
+                tp_overdispersion =  10, 
+                cnt_reduction_workplace = 0.4,
+                cnt_reduction_other = 0.6,
+                holidays_file = "calendar_belgium_2020_covid19_exit_school_adjusted_september.json",
+                num_runs = 50)
 
 
 # Simulations with contact tracing 
