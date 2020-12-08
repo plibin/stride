@@ -84,6 +84,12 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
 
 double TransmissionProfile::DrawIndividualProbability() const
 {
+	// If mean transmission probability is 0, return 0.
+	// FIXME Is this ok?
+	if (m_transmission_probability == 0) {
+		return m_transmission_probability;
+	}
+
 	if (m_transmission_probability_distribution == "Constant") {
 		return m_transmission_probability;
 	} else if (m_transmission_probability_distribution == "Gamma") {
