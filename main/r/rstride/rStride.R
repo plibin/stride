@@ -13,7 +13,7 @@
 #  see http://www.gnu.org/licenses/.
 #
 #
-#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L
 ############################################################################ #
 # 
 # R controller for the Stride model
@@ -29,18 +29,18 @@ if(!'simid.rtools' %in% installed.packages()[,1]){
 library('simid.rtools',quietly = T)
 
 # LOAD R PACKAGES
-# 
-# XML         to parse and write XML files
-# doParallel  to use parallel foreach
-# ggplot2     to plot contact matrices
-# gridExtra   to plot contact matrices
-# mgcv        to sample uncertaint parameters from distributions
-# data.table  to use convenience functions for range subsets (e.g. "between")
-# openxlsx    to read excel files (reference data on incidence)
-# scales      to plot ensembles with transparant colors
-# tidyr       to easily replace na's by 0 (replace_na)
-# data.table  to process (large) transmission data sets, much better performance!! 
-smd_load_packages(c('XML','doParallel','ggplot2','gridExtra','mgcv','data.table','openxlsx','tidyr','data.table'))
+smd_load_packages(c('XML',           # to parse and write XML files
+                    'doParallel',    # to use parallel foreach
+                    'ggplot2',       # to plot contact matrices
+                    'gridExtra',     # to plot contact matrices
+                    'mgcv',          # to sample uncertain parameters from distributions
+                    'data.table',    # to use convenience functions for range subsets (e.g. "between") and to process (large) transmission data sets, much better performance!! 
+                    'openxlsx',      # to read excel files (reference data on incidence)
+                    'scales',        # to plot ensembles with transparant colors
+                    'tidyr',         # to easily replace na's by 0 (replace_na)
+                    'lhs',           # to sample from a latin hypercube design (instead of using a full factorial grid)
+                    'corrplot'       # to visualise the parameter correlations in the paretor front selection
+                    ))
 
 # load general help functions
 source('./bin/rstride/Misc.R')
@@ -48,6 +48,8 @@ source('./bin/rstride/Misc.R')
 # load rStride files (excluding this file)
 rStride_files <- dir('./bin/rstride',recursive = T,pattern = '\\.R',full.names = T)
 rStride_files <- rStride_files[rStride_files != "./bin/rstride/rStride.R"]
+rStride_files <- rStride_files[! grepl('\\.Rmd',rStride_files)]
+
 
 # load all (remaining files)
 sapply(rStride_files,source)
@@ -96,7 +98,7 @@ create_config_exp <- function(config_default, output_prefix, exp_design, i_exp)
 }
 
 #' Parse log file
-parse_log_file <- function(config_exp, i_exp, get_burden_rdata, get_transmission_rdata, project_dir_exp)
+parse_log_file <- function(config_exp, i_exp, get_burden_rdata, get_transmission_rdata, get_tracing_rdata, project_dir_exp)
 {
   output_prefix <- config_exp$output_prefix
 
@@ -107,7 +109,7 @@ parse_log_file <- function(config_exp, i_exp, get_burden_rdata, get_transmission
   # parse event_log (if present)
   event_log_filename <- smd_file_path(output_prefix,'event_log.txt')
   if(file.exists(event_log_filename)){
-    rstride_out <- parse_event_logfile(event_log_filename,i_exp)
+    rstride_out <- parse_event_logfile(event_log_filename,i_exp,get_tracing_rdata)
     
     # account for non-symptomatic cases
     flag <- rstride_out$data_transmission$start_symptoms == rstride_out$data_transmission$end_symptoms
@@ -168,10 +170,13 @@ write_exp_design_to_csv <- function(exp_design, csv_fn)
 #' @param exp_design                vector with experimental design with parameter names as column names
 #' @param dir_postfix               add postfix to output directory name (optional)
 #' @param ignore_stdout             hide standard STRIDE terminal output   
-#' @param remove_run_output         remove all run-specific output
+#' @param stdout_fn                 filename to port stdout from the "system" command (optional)
+#' @param sterr_fn                  filename to port sterr from the "system" command (optional)
+#' @param remove_run_output         remove all detailed run-specific output
 #' @param parse_log_data            parse log files and aggregate into RData files
-#' @param get_csv_output            store aggregated log data also in csv format
-#' @param store_transmission_rdata  parse and store transmission data as RData file
+#' @param get_csv_output            store aggregated log data also in csv format (default: FALSE)
+#' @param get_transmission_rdata    parse and store transmission data as RData file (default: FALSE)
+#' @param get_tracing_rdata         parse and store contact tracing data as RData file (default: FALSE)
 #' @param use_date_prefix           add date tag as prefix to output directory and file names
 #' @param num_parallel_workers      number of parallel workers (NA = use default settings)
 run_rStride <- function(exp_design               = exp_design, 
@@ -179,10 +184,11 @@ run_rStride <- function(exp_design               = exp_design,
                         ignore_stdout            = TRUE,
                         stdout_fn                = '', 
                         stderr_fn                = '', 
+                        remove_run_output        = TRUE,
                         parse_log_data           = TRUE,
                         get_csv_output           = FALSE,
-                        remove_run_output        = TRUE,
                         get_transmission_rdata   = FALSE, 
+                        get_tracing_rdata        = FALSE,
                         get_burden_rdata         = FALSE,
                         use_date_prefix          = TRUE,
                         num_parallel_workers     = NA)
@@ -200,11 +206,22 @@ run_rStride <- function(exp_design               = exp_design,
                 get_burden_rdata         = FALSE,
                 use_date_prefix          = TRUE,
                 num_parallel_workers     = NA))
+    run_tag <- basename(project_dir)
   }
   
   # command line message
   smd_print('STARTING rSTRIDE CONTROLLER')
 
+  ################################## #
+  ## RUN TAG                      ####
+  ################################## #
+  
+  # create run tag using the current time if use_date_prefix == TRUE
+  run_tag <- ifelse(use_date_prefix,format(Sys.time(), format="%Y%m%d_%H%M%S"),'')
+  
+  # add dir_postfix
+  run_tag <- paste0(run_tag,dir_postfix)
+  
   ################################## #
   ## CHECK DESIGN OF EXPERIMENT   ####
   ################################## #
@@ -212,9 +229,10 @@ run_rStride <- function(exp_design               = exp_design,
      .rstride$log_levels_exist(exp_design) == FALSE ||
      .rstride$valid_r0_values(exp_design)  == FALSE ||
      .rstride$valid_immunity_profiles(exp_design)  == FALSE ||
-     .rstride$valid_seed_infected(exp_design) == FALSE){
+     .rstride$valid_seed_infected(exp_design) == FALSE ||
+     .rstride$valid_cnt_param(exp_design) == FALSE){
     
-    .rstride$cli_abort()
+    .rstride$cli_abort('design of experiment is not valid')
     return(.rstride$no_return_value())
   }
   
@@ -227,15 +245,9 @@ run_rStride <- function(exp_design               = exp_design,
   output_dir              <- 'sim_output'
   
   ################################## #
-  ## RUN TAG AND DIRECTORY        ####
+  ## OUTPUT DIRECTORY             ####
   ################################## #
 
-  # create run tag using the current time if use_date_prefix == TRUE
-  run_tag <- ifelse(use_date_prefix,format(Sys.time(), format="%Y%m%d_%H%M%S"),'')
-  
-  # add dir_postfix
-  run_tag <- paste0(run_tag,dir_postfix)
-  
   # create project directory
   project_dir <- smd_file_path(output_dir,run_tag)
 
@@ -254,6 +266,16 @@ run_rStride <- function(exp_design               = exp_design,
   
   # start parallel workers
   smd_start_cluster(timeout = cluster_timeout, num_proc = num_parallel_workers)
+  
+  ################################## #
+  ## CONFIG ID                    ####
+  ####################################
+  
+  # configuration id
+  exp_design$config_id <- .rstride$get_config_id(exp_design)
+  
+  # contact parameter based id
+  exp_design$contact_id <- .rstride$get_contact_id(exp_design)
   
   ################################## #
   ## RUN                          ####
@@ -276,7 +298,9 @@ run_rStride <- function(exp_design               = exp_design,
   # run all experiments (in parallel)
   par_out <- foreach(i_exp=1:nrow(exp_design),
                      .combine='rbind',
-                     .packages=c('XML','simid.rtools','data.table'),
+                     .packages=c('XML','simid.rtools','data.table',
+                                 'tidyr', # to use the 'replace_na' function
+                                 'mgcv'), # to use the 'gam' function
                      .export = c('par_nodes_info',
                                  rStride_functions),
                      .verbose=FALSE) %dopar%
@@ -284,13 +308,17 @@ run_rStride <- function(exp_design               = exp_design,
                       
                        # print progress (only slave1)
                        smd_print_progress(i_exp,nrow(exp_design),time_stamp_loop,par_nodes_info)
-
+                       .rstride$print_system_memory_info(par_nodes_info)
+                       
                        # create experiment tag
                        exp_tag <- .rstride$create_exp_tag(i_exp)
                       
                        output_prefix       = smd_file_path(project_dir,exp_tag,.verbose=FALSE)
                        config_exp_filename = paste0(output_prefix,".xml")
                        config_exp          = create_config_exp(config_default, output_prefix, exp_design, i_exp)
+                       
+                       # # to debug
+                       # config_exp          = .rstride$read_config_xml(config_exp_filename)
                        
                        #save the config as XML file
                        save_config_xml(config_exp, config_exp_filename)
@@ -321,8 +349,14 @@ run_rStride <- function(exp_design               = exp_design,
                            return(run_summary)
                        }
 
-                       # parse log output (and save as rds file)
-                       parse_log_file(config_exp, i_exp, get_burden_rdata, get_transmission_rdata, project_dir_exp)
+                       # parse log file if there is no log threshold (NULL or NA) OR if simulated cases < threshold 
+                       if(is.null(config_exp$logparsing_cases_upperlimit) ||
+                          is.na(config_exp$logparsing_cases_upperlimit) ||
+                          run_summary$num_cases < config_exp$logparsing_cases_upperlimit){
+                         
+                         # parse log output (and save as rds file)
+                         parse_log_file(config_exp, i_exp, get_burden_rdata, get_transmission_rdata, get_tracing_rdata, project_dir_exp)
+                       }
   
                        # remove experiment output and config
                        if(remove_run_output){
@@ -387,53 +421,100 @@ get_counts <- function(all_data,sim_day_max,output_col = "counts"){
 #data_transmission <- rstride_out$data_transmission
 add_hospital_admission_time <- function(data_transmission,config_exp){
   
-  # set hospital age groups (age groups for hospital admission)
-  hosp_age <- list(age1 = 0:18,   # 0:16
-                   age2 = 19:59,  # 16:59
-                   age3 = 60:79,  # 60:80
-                   age4 = 80:110) # 80+
+  parse_hospital_input <- function(x){
+    
+    # defensive programming: if x is not present
+    if(is.null(x) || !grepl(',',x)){
+      x <- '0,0,0,0'
+    }
+    
+    # 1.split string using ','
+    # 2. unlist result
+    # 3. make numeric
+    # 4. reformat into data.frame with 4 columns
+    out <- data.frame(t(as.numeric(unlist(strsplit(x,',')))))
+    # 5. add column names
+    names(out) <- paste0('age',1:length(out))
+    # 6. return result
+    return(out)
+  }
+  
+  if(is.null(config_exp$hospital_category_age)){
+    config_exp$hospital_category_age  = paste(0,19,60,80,sep=',')
+  }
+  
+  age_cat_breaks    <- (parse_hospital_input(config_exp$hospital_category_age))
+  data_transmission$age_cat_hosp     <- cut(data_transmission$part_age,c(age_cat_breaks,110),right=F)
+  data_transmission$age_cat_hosp_num <- as.numeric(data_transmission$age_cat_hosp)
+  
+  # # set hospital age groups (age groups for hospital admission)
+  # hosp_age <- list(age1 = 0:18,   # 0:16
+  #                  age2 = 19:59,  # 16:59
+  #                  age3 = 60:79,  # 60:80
+  #                  age4 = 80:110) # 80+
   
   # create columns for hospital admission start (by age)
   data_transmission[, hospital_admission_start      := as.numeric(NA)]
-  data_transmission[, hospital_admission_start_age1 := as.numeric(NA)]
-  data_transmission[, hospital_admission_start_age2 := as.numeric(NA)]
-  data_transmission[, hospital_admission_start_age3 := as.numeric(NA)]
-  data_transmission[, hospital_admission_start_age4 := as.numeric(NA)]
+  
+  for(i_age_cat in names(age_cat_breaks)){
+    data_transmission[, paste0('hospital_admission_start_',i_age_cat) := as.numeric(NA)]
+  }
+  names(data_transmission)
+  # data_transmission[, hospital_admission_start_age1 := as.numeric(NA)]
+  # data_transmission[, hospital_admission_start_age2 := as.numeric(NA)]
+  # data_transmission[, hospital_admission_start_age3 := as.numeric(NA)]
+  # data_transmission[, hospital_admission_start_age4 := as.numeric(NA)]
   
   # hospital probability
   # hospital_probability <- data.frame(age1 = 0.035,
   #                                    age2 = 0.0216,
   #                                    age3 = 0.0855,
   #                                    age4 = 0.423)
-  hospital_probability <- data.frame(age1 = 0.049,
-                                     age2 = 0.03024,
-                                     age3 = 0.1197,
-                                     age4 = 0.5922)
+  # hospital_probability <- data.frame(age1 = 0.049,
+  #                                    age2 = 0.03024,
+  #                                    age3 = 0.1197,
+  #                                    age4 = 0.5922)
+  
+  hospital_probability        <- parse_hospital_input(config_exp$hospital_probability_age)
+  
+  # # relative proportions
+  # # reference: hospital survey data by age (faes et al) / observed sympt cases by age R0 callibration 2020-09-17
+  # hospital_probability <- data.frame(age1 = 0.5863577,
+  #                                    age2 = 0.6193339,
+  #                                    age3 = 1.1223633,
+  #                                    age4 = 3.1063142)
+  # 
+  # #rescale 
+  # hospital_probability <- hospital_probability / max(hospital_probability) * 0.6
   
   # adjust probability (for fitting)
   hospital_probability <- hospital_probability * config_exp$hosp_probability_factor
   
-  # set hospital delay for 3 age groups
-  hosp_delay_mean <- data.frame(age1 = 3,
-                                age2 = 7,
-                                age3 = 7,
-                                age4 = 6)
+  # defensive programming for fitting ==>> probability cannot be > 1
+  hospital_probability[hospital_probability>1] <- 1
+  
+  # # set hospital delay for 4 age groups
+  # hosp_delay_mean <- data.frame(age1 = 3,
+  #                               age2 = 7,
+  #                               age3 = 6,
+  #                               age4 = 4)
+  hosp_delay_mean      <- parse_hospital_input(config_exp$hospital_mean_delay_age)
   
   # set (uniform) delay  distribution -1, 0, 1
   hosp_delay_variance <- -1:1
   
-  # calculate time between symptom onset and hospital admission (future work)
-  get_hospital_delay <- function(n){
-    round(rtweibull(n, shape=1.112,scale=5.970, max =31))
-  }
+  # # calculate time between symptom onset and hospital admission (future work)
+  # get_hospital_delay <- function(n){
+  #   round(rtweibull(n, shape=1.112,scale=5.970, max =31))
+  # }
 
   # sample hospital admission dates
   i_hosp <- 1
   for(i_hosp in 1:length(hospital_probability)){
-    flag_part      <- !is.na(data_transmission$start_symptoms) & data_transmission$part_age %in% hosp_age[[i_hosp]]
+    flag_part      <- !is.na(data_transmission$start_symptoms) & data_transmission$age_cat_hosp_num == i_hosp
     flag_admission <- as.logical(rbinom(n = nrow(data_transmission),size = 1,prob = hospital_probability[[i_hosp]]))
     flag_hosp      <- flag_part & flag_admission
-    hosp_start    <- as.numeric(data_transmission$start_symptoms[flag_hosp]) + hosp_delay_mean[[i_hosp]] + sample(hosp_delay_variance,sum(flag_hosp),replace = T)
+    hosp_start     <- as.numeric(data_transmission$start_symptoms[flag_hosp]) + hosp_delay_mean[[i_hosp]] + sample(hosp_delay_variance,sum(flag_hosp),replace = T)
     data_transmission[flag_hosp, hospital_admission_start := hosp_start]
     # data_transmission$hospital_admission_start[flag_hosp]        <- data_transmission$start_symptoms[flag_hosp] +
     #   hosp_delay_mean[[i_hosp]] + sample(hosp_delay_variance,sum(flag_hosp),replace = T)
@@ -450,18 +531,18 @@ add_hospital_admission_time <- function(data_transmission,config_exp){
   # 770/2048 born between 1940-1960 (median=6, mean=6, range= 0-29)
   # 416 born before 1940/2048 (median=3, mean=4, range= 0-29)
   # 147 missing age
-  ref <- c(57,658,770,416) / (2048-147)
-  
-  estim <- c(sum(!is.na(data_transmission$hospital_admission_start_age1)),
-              sum(!is.na(data_transmission$hospital_admission_start_age2)),
-              sum(!is.na(data_transmission$hospital_admission_start_age3)),
-              sum(!is.na(data_transmission$hospital_admission_start_age4)))
-  
-  rbind(estim / sum(estim),
-        ref)
-  
-  smd_print('AVG. HOSPITAL RATE (age specific)',round(mean(approx(c(0,19,60,80),hospital_probability,0:100,method='constant',rule = 2)$y),digits=3))
-  smd_print('AVG. HOSPITAL RATE (cases)',round(sum(!is.na(data_transmission$hospital_admission_start)) / sum(!is.na(data_transmission$start_symptoms)),digits=3))
+  # ref <- c(57,658,770,416) / (2048-147)
+  # 
+  # estim <- c(sum(!is.na(data_transmission$hospital_admission_start_age1)),
+  #             sum(!is.na(data_transmission$hospital_admission_start_age2)),
+  #             sum(!is.na(data_transmission$hospital_admission_start_age3)),
+  #             sum(!is.na(data_transmission$hospital_admission_start_age4)))
+  # 
+  # rbind(estim / sum(estim),
+  #       ref)
+  # 
+  # smd_print('AVG. HOSPITAL RATE (age specific)',round(mean(approx(c(0,19,60,80),hospital_probability,0:100,method='constant',rule = 2)$y),digits=3))
+  # smd_print('AVG. HOSPITAL RATE (cases)',round(sum(!is.na(data_transmission$hospital_admission_start)) / sum(!is.na(data_transmission$start_symptoms)),digits=3))
 
   # return
   return(data_transmission) 

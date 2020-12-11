@@ -226,7 +226,7 @@ data.table(category = "community_distancing",
 
 # household clustering
 data.table(category = "household_clustering",
-           date     = seq(as.Date('2020-05-10'),as.Date('2020-08-31'),1),
+           date     = seq(as.Date('2020-05-11'),as.Date('2020-08-31'),1),
            value    = 1,
            type = 'boolean',
            age = NA_integer_,
@@ -365,7 +365,7 @@ d_calendar_exit_subset <- copy(d_calendar_exit_school)
 d_calendar_exit_subset[date %in% d_school_reopening & age %in% 12:17, value := 0]
 write.table(d_calendar_exit_subset,
             file = 'data/calendar_belgium_2020_covid19_may_secondary_school.csv',sep=',',row.names=F,quote=F)
-plot_calendar(d_calendar_exit_subset)
+plot_calendar(d_calendar_exit_subset,show_plots)
 
 # K6 schools
 d_calendar_exit_subset <- copy(d_calendar_exit_school)
@@ -379,7 +379,7 @@ d_calendar_exit_subset <- copy(d_calendar_exit_school)
 d_calendar_exit_subset[date %in% d_school_reopening & age %in% 0:17, value := 0]
 write.table(d_calendar_exit_subset,
             file = 'data/calendar_belgium_2020_covid19_may_k12school.csv',sep=',',row.names=F,quote=F)
-plot_calendar(d_calendar_exit_subset)
+plot_calendar(d_calendar_exit_subset,show_plots)
 
 # pre-, primary and secondary fully open on selection of days
 # note: based on the age-specific program, but by school category
@@ -394,7 +394,7 @@ plot_calendar(d_calendar_exit_subset,show_plots)
 }
 
 
-plot_calendar <- function(dt_calendar,show_plots = TRUE,b_school_repopening=TRUE){
+plot_calendar <- function(dt_calendar, show_plots = TRUE, b_school_repopening=TRUE){
   if(show_plots){
     category_opt <- unique(dt_calendar$category)
     par(mfrow=c(4,2))

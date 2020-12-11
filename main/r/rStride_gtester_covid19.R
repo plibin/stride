@@ -14,7 +14,7 @@
 #  see http://www.gnu.org/licenses/.
 #
 #
-#  Copyright 2020, Willem L, Kuylen E & Broeckhove J
+#  Copyright 2020, Willem L
 ############################################################################ #
 #
 # Call this script from the main project folder (containing bin, config, lib, ...)
@@ -73,6 +73,11 @@ exp_design <- expand.grid(r0                            = 2.5,
                           test_false_negative            = 0,
                           gtester_label                  = 'covid_base',
                           event_log_level                = 'Transmissions',
+                          
+                          hospital_category_age         = paste(0,19,60,80,sep=','),
+                          hospital_probability_age      = paste(0.049,0.03024,0.1197,0.5922,sep=','),
+                          hospital_mean_delay_age       = paste(3,7,7,6,sep=','),
+
                           stringsAsFactors = F)
 
 # all contacts
@@ -139,7 +144,7 @@ dim(exp_design)
 
 # # selection?
 # exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
-exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
+#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
 
 
 ################################## #
@@ -261,6 +266,13 @@ if(length(diff_incidence)>0){
     smd_print('EXP_ID with changes:', paste(unique(data_incidence$exp_id[flag]),collapse = ','))
     # data_incidence[flag,names(diff_incidence)]
     # ref_data_incidence[flag,names(diff_incidence)]    
+    
+    # bool_colnames <- names(diff_incidence)[names(diff_incidence) %in% names(ref_data_incidence)]
+    # bool_colnames
+    # head(data_incidence[,bool_colnames])
+    # head(ref_data_incidence[,bool_colnames])
+    #head(data_incidence[names(diff_incidence)])
+    
   }
   #print(head(diff_incidence))
 } else{
@@ -296,3 +308,4 @@ rrv_repo <- function(){
   saveRDS(data_prevalence,file=file.path(stride_repo_dir,'regression_rstride_prevalence.rds'))
   smd_print('NEW REFERENCE VALES STORED: IN STRIDE REPOSITORY')
 }
+

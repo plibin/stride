@@ -1,33 +1,33 @@
-<!-- This file is part of the Stride software [2020-04-30 15:55:39]-->
+<!-- This file is part of the Stride software [2020-09-17 11:51:34]-->
 <disease>
   <label>
     <pathogen>covid19</pathogen>
-    <num_infected_seeds>10</num_infected_seeds>
-    <total_num_index_cases>4200</total_num_index_cases>
-    <num_rng_seeds>420</num_rng_seeds>
+    <num_infected_seeds>20</num_infected_seeds>
+    <total_num_index_cases>23756</total_num_index_cases>
+    <num_rng_seeds>1050</num_rng_seeds>
     <dim_exp_design>11025</dim_exp_design>
-    <num_realisations>4</num_realisations>
-    <fit_r0_limit>6.4</fit_r0_limit>
-    <fit_r0_range>1-5.6</fit_r0_range>
-    <population_file>pop_belgium600k_c500_teachers_censushh.csv</population_file>
+    <num_realisations>10</num_realisations>
+    <fit_r0_limit>5.4</fit_r0_limit>
+    <fit_r0_range>1-6</fit_r0_range>
+    <population_file>pop_belgium11M_c500_teachers_censushh.csv</population_file>
     <num_days>20</num_days>
-    <population_size>600000</population_size>
-    <initially_infected>10</initially_infected>
+    <population_size>11000000</population_size>
+    <initially_infected>20</initially_infected>
     <r01>1</r01>
-    <r02>1.32857</r02>
-    <r03>1.65714</r03>
-    <r04>1.98571</r04>
-    <r05>2.31429</r05>
-    <r06>2.64286</r06>
-    <r07>2.97143</r07>
-    <r08>3.3</r08>
-    <r09>3.62857</r09>
-    <r010>3.95714</r010>
-    <r011>4.28571</r011>
-    <r012>4.61429</r012>
-    <r013>4.94286</r013>
-    <r014>5.27143</r014>
-    <r015>5.6</r015>
+    <r02>1.35714</r02>
+    <r03>1.71429</r03>
+    <r04>2.07143</r04>
+    <r05>2.42857</r05>
+    <r06>2.78571</r06>
+    <r07>3.14286</r07>
+    <r08>3.5</r08>
+    <r09>3.85714</r09>
+    <r010>4.21429</r010>
+    <r011>4.57143</r011>
+    <r012>4.92857</r012>
+    <r013>5.28571</r013>
+    <r014>5.64286</r014>
+    <r015>6</r015>
     <immunity_rate>0</immunity_rate>
     <num_threads>1</num_threads>
     <start_date1>2020-02-01</start_date1>
@@ -39,11 +39,11 @@
     <start_date7>2020-02-07</start_date7>
     <age_contact_matrix_file>contact_matrix_flanders_conditional_teachers.xml</age_contact_matrix_file>
     <num_participants_survey>10</num_participants_survey>
-    <disease_config_file>disease_covid19_age.xml</disease_config_file>
-    <contact_log_level>Transmissions</contact_log_level>
-    <contact_output_file>true</contact_output_file>
+    <disease_config_file>disease_covid19_age_distr_d6.xml</disease_config_file>
+    <event_log_level>Transmissions</event_log_level>
+    <event_output_file>true</event_output_file>
     <global_information_policy>NoGlobalInformation</global_information_policy>
-    <holidays_file>holidays_none.json</holidays_file>
+    <holidays_file>holidays_none.csv</holidays_file>
     <immunity_profile>None</immunity_profile>
     <output_cases>true</output_cases>
     <output_persons>false</output_persons>
@@ -51,56 +51,88 @@
     <population_type>default</population_type>
     <seeding_age_max>99</seeding_age_max>
     <seeding_age_min>1</seeding_age_min>
-    <num_infected_seeds>10</num_infected_seeds>
+    <num_infected_seeds>20</num_infected_seeds>
     <stride_log_level>info</stride_log_level>
     <track_index_case>false</track_index_case>
     <use_install_dirs>true</use_install_dirs>
     <vaccine_link_probability>0</vaccine_link_probability>
     <vaccine_profile>None</vaccine_profile>
     <vaccine_rate>0</vaccine_rate>
-    <run_tag>20200430_154646_r0</run_tag>
+    <run_tag>20200917_092033_r0_d6</run_tag>
     <num_cea_samples>10000</num_cea_samples>
-    <adaptive_symptomatic_behavior>true</adaptive_symptomatic_behavior>
+    <hosp_probability_factor>1</hosp_probability_factor>
   </label>
   <start_symptomatic>
     <probability>0</probability>
-    <probability>0</probability>
-    <probability>0</probability>
-    <probability>0</probability>
-    <probability>0</probability>
-    <probability>0.33</probability>
-    <probability>0.66</probability>
+    <probability>0.0576910529818656</probability>
+    <probability>0.219456405345359</probability>
+    <probability>0.39710697818509</probability>
+    <probability>0.548249480534491</probability>
+    <probability>0.66528937624965</probability>
+    <probability>0.75256223129778</probability>
+    <probability>0.816735699829526</probability>
+    <probability>0.863791348675288</probability>
+    <probability>0.898389822287054</probability>
+    <probability>0.92397041183976</probability>
+    <probability>0.943015126299581</probability>
+    <probability>0.957301296278254</probability>
+    <probability>0.968101090157561</probability>
+    <probability>0.976328243465852</probability>
+    <probability>0.982642699811166</probability>
+    <probability>0.987524286231082</probability>
+    <probability>0.991324391515167</probability>
+    <probability>0.994302256753472</probability>
+    <probability>0.996650560052127</probability>
+    <probability>0.998513553083957</probability>
     <probability>1</probability>
   </start_symptomatic>
   <time_asymptomatic>
     <probability>0</probability>
-    <probability>0</probability>
-    <probability>0.50</probability>
+    <probability>0.361345773554381</probability>
+    <probability>0.65107774544476</probability>
+    <probability>0.843992138129251</probability>
+    <probability>0.946221057602425</probability>
+    <probability>0.986866672041515</probability>
+    <probability>0.998000913555722</probability>
+    <probability>0.999846318773256</probability>
+    <probability>0.999995943865387</probability>
+    <probability>0.99999998389733</probability>
+    <probability>0.999999999999038</probability>
+    <probability>1</probability>
+    <probability>1</probability>
     <probability>1</probability>
   </time_asymptomatic>
   <time_infectious>
     <probability>0</probability>
     <probability>0</probability>
-    <probability>0</probability>
-    <probability>0</probability>
-    <probability>0</probability>
-    <probability>0.25</probability>
-    <probability>0.50</probability>
-    <probability>0.75</probability>
-    <probability>1</probability>
+    <probability>0.00013</probability>
+    <probability>0.00456</probability>
+    <probability>0.05855</probability>
+    <probability>0.30052</probability>
+    <probability>0.69946</probability>
+    <probability>0.94143</probability>
+    <probability>0.99542</probability>
+    <probability>0.99985</probability>
+    <probability>0.99998</probability>
+    <probability>0.99998</probability>
+    <probability>0.99998</probability>
+    <probability>0.99998</probability>
+    <probability>0.99998</probability>
+    <probability>0.99998</probability>
   </time_infectious>
   <time_symptomatic>
     <probability>0</probability>
     <probability>0</probability>
     <probability>0</probability>
     <probability>0</probability>
-    <probability>0.70</probability>
-    <probability>0.85</probability>
+    <probability>0</probability>
+    <probability>0</probability>
+    <probability>0</probability>
     <probability>1</probability>
   </time_symptomatic>
   <transmission>
-    <b0>0.14743616688954</b0>
-    <b1>43.9598287259418</b1>
+    <b0>0.124492138353664</b0>
+    <b1>39.6458896077442</b1>
     <b2>0</b2>
   </transmission>
   <sympt_cnt_reduction_work_school>

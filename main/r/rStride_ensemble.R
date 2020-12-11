@@ -34,7 +34,7 @@ source('./bin/rstride/rStride.R')
 source('./bin/rStride_intervention_baseline.R')
 
 # set directory postfix (optional)
-dir_postfix <- '_int'
+dir_postfix <- '_ensemble_int'
 
 ################################## #
 ## DESIGN OF EXPERIMENTS        ####
@@ -43,10 +43,15 @@ dir_postfix <- '_int'
 # add default parameters and values to combine in a full-factorial grid
 exp_param_list <- get_exp_param_default(bool_revised_model_param = T)
 
-# change parameters and values to combine in a full-factorial grid
+# option to change parameters and values to combine in a full-factorial grid
 
 # check period
 range(as.Date(exp_param_list$start_date), as.Date(exp_param_list$start_date)+ exp_param_list$num_days)
+
+## CONFIG PARETO ENSEMBLE
+config_pareto <- read.table('./config/rStride_config_pareto_ensemble.csv',sep=',',header=T)
+names(config_pareto)
+exp_param_list$pareto_num <- unique(config_pareto$pareto_num)
 
 ################################################ #
 ## GENERATE DESIGN OF EXPERIMENT GRID         ####
@@ -57,12 +62,15 @@ exp_design <- .rstride$get_full_grid_exp_design(exp_param_list = exp_param_list,
                                                 num_seeds      = exp_param_list$num_seeds)
 dim(exp_design)
 
+# introduce parameter values from pareto ensemble
+sel_names <- names(config_pareto)[names(config_pareto) %in% names(exp_design)]
+exp_design[,sel_names] <- config_pareto[exp_design$pareto_num,sel_names]
+
 ################################## #
 ## RUN rSTRIDE                  ####
 ################################## #
 project_dir <- run_rStride(exp_design               = exp_design,
-                           dir_postfix              = dir_postfix,
-                           num_parallel_workers     = exp_param_list$num_parallel_workers)
+                           dir_postfix              = dir_postfix)
 
 
 ############################# #
@@ -74,13 +82,13 @@ inspect_summary(project_dir)
 ############################# #
 ## SURVEY PARTICIPANT DATA ####
 ############################# #
-inspect_participant_data(project_dir)
+#inspect_participant_data(project_dir)
 
 
 ########################################### #
 ## PARAMETER ESTIMATION (optional)       ####
 ########################################### #
-estimate_parameters(project_dir)
+#estimate_parameters(project_dir)
 
 
 ############################# #
@@ -92,19 +100,19 @@ inspect_incidence_data(project_dir)
 ############################# #
 ## PREVALENCE              ####
 ############################# #
-inspect_prevalence_data(project_dir)
+#inspect_prevalence_data(project_dir)
 
 
 ############################# #
 ## TRANSMISSION            ####
 ############################# #
-inspect_transmission_dynamics(project_dir)
+#inspect_transmission_dynamics(project_dir)
  
 
 ############################# #
 ## CONTACT TRACING         ####
 ############################# #
-inspect_tracing_data(project_dir)
+#inspect_tracing_data(project_dir)
 
 
 
