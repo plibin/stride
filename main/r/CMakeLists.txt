@@ -29,9 +29,12 @@ INSTALL(DIRECTORY
 
 # rStride analysis scripts
 INSTALL( FILES 			
+            rStride_abc.R
             rStride_all.R
             rStride_contacts.R
             rStride_create_config.R
+            rStride_ensemble.R
+            rStride_param.R
             rStride_parse_output.R
             rStride_explore.R
             rStride_gtester_covid19.R
@@ -39,6 +42,7 @@ INSTALL( FILES
             rStride_intervention_baseline.R
             rStride_intervention.R
             rStride_geoclustering.R			 
+            rStride_universal_testing.R
             rStride_pop.R				 
 
 	DESTINATION ${BIN_INSTALL_LOCATION}  

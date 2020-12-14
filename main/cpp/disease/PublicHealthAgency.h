@@ -58,6 +58,12 @@ public:
 		/// Is Contact tracing active today?
 		bool IsContactTracingActive(const std::shared_ptr<Calendar> calendar) const;
 
+        /// Trace one individual
+        void Trace(Person& p_case,
+                std::shared_ptr<Population> pop,
+                ContactHandler& cHandler,
+                const std::shared_ptr<Calendar> calendar);
+
 private:
         double m_telework_probability;    ///< Probability to perform telework (or equivalent) //TODO rename "telework"
         //contact tracing configuration
@@ -68,8 +74,6 @@ private:
         unsigned int m_delay_isolation_index;         ///< Number of days after symptom onset to perform a clinical test
         unsigned int m_delay_contact_tracing; ///< Number of days after clinical test to start contact tracing
 		double m_test_false_negative;         ///< False negative rate of PCR tests
-
-		bool m_school_system_adjusted;         ///< Apply adjusted school system for pre-, primary and secondary schools?
 };
 
 } // namespace stride
