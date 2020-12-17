@@ -103,7 +103,7 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
     if (t_prob_distribution) {
     		m_transmission_probability_distribution = *t_prob_distribution;
     		// Get target overdispersion
-    		m_transmission_probability_distribution_overdispersion = configPt.get<double>("run.transmisssion_probability_distribution_overdispersion");
+    		m_transmission_probability_distribution_overdispersion = configPt.get<double>("run.transmission_probability_distribution_overdispersion");
     }
 
     // Save pointer to RnMan
