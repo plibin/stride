@@ -20,9 +20,12 @@
 
 #pragma once
 
+#include "pop/Person.h"
 #include "util/RnMan.h"
 
 #include <boost/property_tree/ptree.hpp>
+#include <vector>
+#include <numeric>
 
 namespace stride {
 
@@ -32,24 +35,44 @@ namespace stride {
 class TransmissionProfile
 {
 public:
-        TransmissionProfile() : m_transmission_probability(0.0), m_transmission_probability_distribution("Constant"),
-								m_transmission_probability_distribution_overdispersion(0), m_rn_man_p() {}
+	TransmissionProfile(): m_transmission_probability(0),
+							m_transmission_probability_distribution("Constant"),
+							m_transmission_probability_distribution_overdispersion(0),
+							m_susceptibility_age(100),
+							m_rel_transmission_asymptomatic(1),
+							m_rel_susceptibility_children(1),
+							m_rn_man_p() {}
 
-        /// Return transmission probability.
-        double GetProbability() const { return m_transmission_probability; }
+	/// Initialize.
+	void Initialize(const boost::property_tree::ptree& configPT, const boost::property_tree::ptree& diseasePt, util::RnMan& rnMan);
 
-        /// Return individual transmission probability.
-        double DrawIndividualProbability() const;
+	/// Return mean transmission probability.
+	double GetProbability() const;
 
-        /// Initialize.
-        void Initialize(const boost::property_tree::ptree& configPt, const boost::property_tree::ptree& diseasePt, util::RnMan& rnMan);
+	/// Return mean age-specfici susceptibility adjustment factor.
+	double GetSusceptibilityFactor() const;
 
+	/// Return age-specific susceptibility adjustment factor.
+	double GetSusceptibilityFactor(unsigned int age) const;
+
+	/// Return age-, health-, and person-specific transmission probability.
+	double GetProbability(Person* p_infected, Person* p_susceptible) const;
+
+	/// Draw individual transmission probability from distribution.
+	double DrawIndividualProbability() const;
 private:
-        double m_transmission_probability;
-        std::string m_transmission_probability_distribution;
-        double m_transmission_probability_distribution_overdispersion;
+	double 						m_transmission_probability;
 
-        std::unique_ptr<util::RnMan> m_rn_man_p;	// FIXME is this ok cfr. splitting of random number stream?
+	std::string 					m_transmission_probability_distribution;
+	double 						m_transmission_probability_distribution_overdispersion;
+
+	std::vector<double>			m_susceptibility_age;
+
+    double            			m_rel_transmission_asymptomatic; ///< Relative reduction of transmission for asymptomatic cases
+    double             			m_rel_susceptibility_children; ///< Relative reduction of susceptibility for children vs. adults
+
+	std::unique_ptr<util::RnMan> m_rn_man_p;	// FIXME is this ok cfr. splitting of random number stream?
 };
 
 } // namespace stride
+
