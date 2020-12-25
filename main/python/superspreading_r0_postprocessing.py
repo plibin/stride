@@ -97,6 +97,7 @@ def main(output_dir, scenario_names):
             tps.sort()
             all_tps.append(tps)
 
+
             '''population_file = os.path.join(output_dir, "..", "data", "pop_belgium3000k_c500_teachers_censushh.csv")
             contact_matrix_file = os.path.join(output_dir, "..", "data", "contact_matrix_flanders_conditional_teachers.xml")
             infectious_period_lengths = [6]
@@ -149,6 +150,8 @@ def main(output_dir, scenario_names):
 
     for i in range(len(all_means)):
         plt.plot(all_tps[i], all_means_no_extinction[i])
+
+    #plt.plot(all_tps[i], theoretical)
     plt.xlabel("Transmission probability")
     plt.xticks(all_tps[0])
     plt.ylabel("Mean # of secondary cases per index case")

@@ -1,8 +1,13 @@
 import argparse
 import csv
+import multiprocessing
 import numpy
 import random
+import time
 import xml.etree.ElementTree as ET
+
+import scipy.integrate as integrate
+from scipy.stats import gamma
 
 def get_contact_rates(pooltype, contact_rate_tree, maxAge):
     # Create matrix of zeroes
@@ -35,40 +40,59 @@ def add_to_pool(pools, pool_id, person_id, age):
         else:
             pools[pool_id] = [(person_id, age)]
 
-def get_effective_contacts(person_id, age, pools, pooltype, pool_id, contact_rates,
-    infectious_period_lengths, transmission_probability, contacts_only):
+
+def get_effective_contacts(person, all_pools, contact_rates, infectious_period_lengths,
+    transmission_probability, mean_transmission_probability, overdispersion, contacts_only):
+
     effective_contacts = 0
 
-    # Iterate over pool members
-    if pool_id > 0:
-        pool_members = pools[pool_id]
-        pool_size = len(pool_members)
-        for infectious_period in infectious_period_lengths:
-            for member in pool_members:
-                member_id = member[0]
-                member_age = member[1]
-                if member_id != person_id: # Check that this is not the same person
-                    # This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
-                    contact_rate1 = contact_rates[pooltype][age]
-                    contact_rate2 = contact_rates[pooltype][member_age]
-                    contact_probability1 = contact_rate1 / (pool_size - 1)
-                    contact_probability2 = contact_rate2 / (pool_size - 1)
-                    contact_probability = min(contact_probability1, contact_probability2)
-                    # Households are assumed to be fully connected in Stride
-                    if pooltype == "household":
-                        contact_probability = 0.999
-                        #contact_probability = 1
-                    if contact_probability >= 1:
-                        contact_probability = 0.999
-                    if contacts_only:
-                        effective_contacts += 1 - ((1 - contact_probability)**infectious_period)
-                    else:
-                        effective_contacts += 1 - ((1 - (transmission_probability * contact_probability))**infectious_period)
+    person_id = person["id"]
+    age = person["age"]
+
+    for pool_type, pools in all_pools.items():
+        pool_id = person[pool_type + "_id"]
+        if pool_id > 0:
+            pool_members = pools[pool_id]
+            pool_size = len(pool_members)
+            for infectious_period in infectious_period_lengths:
+                for member in pool_members:
+                    member_id = member[0]
+                    member_age = member[1]
+                    if member_id != person_id: # Check that this is not the same person
+                        # This is for aggregated contacts by age (participants -> contacts -> contact -> age = all)
+                        contact_rate1 = contact_rates[pool_type][age]
+                        contact_rate2 = contact_rates[pool_type][member_age]
+                        contact_probability1 = contact_rate1 / (pool_size - 1)
+                        contact_probability2 = contact_rate2 / (pool_size - 1)
+                        contact_probability = min(contact_probability1, contact_probability2)
+                        # Households are assumed to be fully connected in Stride
+                        if pool_type == "household":
+                            contact_probability = 0.999
+                            #contact_probability = 1
+                        if contact_probability >= 1:
+                            contact_probability = 0.999
+
+                        if contacts_only:
+                            effective_contacts += 1 - ((1 - contact_probability)**infectious_period)
+                        else:
+                            shape = overdispersion
+                            scale = mean_transmission_probability / shape
+                            effective_contacts += (1 - ((1 - (transmission_probability * contact_probability))**infectious_period) * (gamma.pdf(transmission_probability, shape, scale=scale) / (gamma.cdf(1, shape, scale=scale) - gamma.cdf(0, shape, scale=scale))))
+
     # Assuming uniform distribution of infectious period lengths
     effective_contacts /= len(infectious_period_lengths)
+
     return effective_contacts
 
-def estimate_transmission_probabilities(population_file, contact_matrix_file, infectious_period_lengths, transmission_probabilities, person_ids=None, get_mean=True, contacts_only=False):
+def integr(person, pools, contact_rates, infectious_period_lengths, tp, overdispersion, contacts_only):
+    # Get # of effective contacts in each of the contact pools
+    # to which this person belongs
+    #effective_contacts = get_effective_contacts(person, pools, contact_rates, infectious_period_lengths, tp, tp, overdispersion, contacts_only)
+    func = lambda x: get_effective_contacts(person, pools, contact_rates, infectious_period_lengths, x, tp, overdispersion, contacts_only)
+    integral, upper_error = integrate.quad(func, 0, 1, epsabs=1.49e-2)
+    return integral
+
+def estimate_transmission_probabilities(population_file, contact_matrix_file, infectious_period_lengths, transmission_probabilities, overdispersion=None, person_ids=[], get_mean=True, contacts_only=False):
     maxAge = 111
 
     ############################################################################
@@ -77,7 +101,7 @@ def estimate_transmission_probabilities(population_file, contact_matrix_file, in
 
     contact_rates = {
         "household": [],
-        "workplace": [],
+        "work": [],
         "school": [],
         "primary_community": [],
         "secondary_community": []
@@ -86,7 +110,7 @@ def estimate_transmission_probabilities(population_file, contact_matrix_file, in
     # Parse xml file
     contact_matrix_tree = ET.parse(contact_matrix_file).getroot()
     contact_rates["household"] = get_contact_rates("household", contact_matrix_tree, maxAge)
-    contact_rates["workplace"] = get_contact_rates("work", contact_matrix_tree, maxAge)
+    contact_rates["work"] = get_contact_rates("work", contact_matrix_tree, maxAge)
     contact_rates["school"] = get_contact_rates("school", contact_matrix_tree, maxAge)
     contact_rates["primary_community"] = get_contact_rates("primary_community", contact_matrix_tree, maxAge)
     contact_rates["secondary_community"] = get_contact_rates("secondary_community", contact_matrix_tree, maxAge)
@@ -124,6 +148,14 @@ def estimate_transmission_probabilities(population_file, contact_matrix_file, in
                                 "secondary_community_id": int(float(row["secondary_community"]))})
             person_id += 1
 
+    pools = {
+        "household": households,
+        "work": workplaces,
+        "school": schools,
+        "primary_community": primary_communities,
+        "secondary_community": secondary_communities
+    }
+
     ############################################################################
     # For each transmission probability to be tested:                          #
     # iterate over all persons in the population,                              #
@@ -135,42 +167,40 @@ def estimate_transmission_probabilities(population_file, contact_matrix_file, in
     for tp in transmission_probabilities:
         all_effective_contacts = []
         selected_population = population
-        if person_ids is not None:
+        if len(person_ids) > 0:
             selected_population = [population[i] for i in person_ids]
-        for person in selected_population:
+
+        with multiprocessing.Pool(processes=4) as pool:
+            all_effective_contacts = pool.starmap(integr,
+                                [(person, pools, contact_rates, infectious_period_lengths, tp, overdispersion, contacts_only) for person in selected_population[:3]])
+
+        '''for person in selected_population[:3]:
             # Get # of effective contacts in each of the contact pools
             # to which this person belongs
-            hh_effective_contacts = get_effective_contacts(person["id"], person["age"],
-                                                            households, "household", person["household_id"],
-                                                            contact_rates, infectious_period_lengths, tp, contacts_only)
-            work_effective_contacts = get_effective_contacts(person["id"], person["age"],
-                                                            workplaces, "workplace", person["work_id"],
-                                                            contact_rates, infectious_period_lengths, tp, contacts_only)
-            school_effective_contacts = get_effective_contacts(person["id"], person["age"],
-                                                            schools, "school", person["school_id"],
-                                                            contact_rates, infectious_period_lengths, tp, contacts_only)
-            primary_community_effective_contacts = get_effective_contacts(person["id"], person["age"],
-                                                            primary_communities, "primary_community", person["primary_community_id"],
-                                                            contact_rates, infectious_period_lengths, tp, contacts_only)
-            secondary_community_effective_contacts = get_effective_contacts(person["id"], person["age"],
-                                                            secondary_communities, "secondary_community", person["secondary_community_id"],
-                                                            contact_rates, infectious_period_lengths, tp, contacts_only)
-
-            total_effective_contacts = hh_effective_contacts + work_effective_contacts + school_effective_contacts + primary_community_effective_contacts + secondary_community_effective_contacts
-            all_effective_contacts.append(total_effective_contacts)
+            #effective_contacts = get_effective_contacts(person, pools, contact_rates, infectious_period_lengths, tp, tp, overdispersion, contacts_only)
+            func = lambda x: get_effective_contacts(person, pools, contact_rates, infectious_period_lengths, x, tp, overdispersion, contacts_only)
+            integral, upper_error = integrate.quad(func, 0, 1, epsabs=1.49e-4)
+            #1.49e-8
+            all_effective_contacts.append(integral)
+            print(integral)'''
 
         if get_mean:
             mean_effective_contacts = sum(all_effective_contacts) / len(all_effective_contacts)
             effective_contacts_by_tp[tp] = mean_effective_contacts
         else:
             effective_contacts_by_tp[tp] = all_effective_contacts
+
     return effective_contacts_by_tp
 
 
 def main(population_file, contact_matrix_file, infectious_period_lengths, transmission_probabilities, person_ids, get_mean, contacts_only):
+    begin = time.perf_counter()
     effective_contacts_by_tp = estimate_transmission_probabilities(population_file, contact_matrix_file,
                                                             infectious_period_lengths, transmission_probabilities,
-                                                            person_ids, get_mean, contacts_only)
+                                                            overdispersion=0.4, person_ids=person_ids,
+                                                            get_mean=get_mean, contacts_only=contacts_only)
+    end = time.perf_counter()
+    print("Runtime: {} seconds".format(end - begin))
     for tp in effective_contacts_by_tp:
         print("{}: R0 estimated to be {}".format(tp, effective_contacts_by_tp[tp]))
 
@@ -179,8 +209,8 @@ if __name__=="__main__":
     parser.add_argument("population_file", type=str)
     parser.add_argument("contact_matrix_file", type=str)
     parser.add_argument("--infectious_period_lengths", type=int, nargs="+", default=[6,7,8,9], help="Mean length of infectious period (in days)")
-    parser.add_argument("--transmission_probabilities", type=float, nargs="+", default=[0.00, 0.025, 0.05, 0.075, 0.10])
-    parser.add_argument("--person_ids", type=int, nargs="+", default=None)
+    parser.add_argument("--transmission_probabilities", type=float, nargs="+", default=[0.025, 0.05, 0.075, 0.10])
+    parser.add_argument("--person_ids", type=int, nargs="+", default=[])
     parser.add_argument("--get_mean", action="store_false", default=True)
     parser.add_argument("--contacts_only", action="store_true", default=False)
     args = parser.parse_args()

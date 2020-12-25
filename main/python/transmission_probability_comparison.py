@@ -19,7 +19,6 @@ def main(output_dir, scenario_name):
     # Get number of secondary cases caused by index case for each experiment
     secondary_cases_by_tp = {}
     for exp_id in experiments:
-        print(exp_id)
         # Get transmission probability used
         tp = experiments[exp_id]
         # Get secondary cases of index case
