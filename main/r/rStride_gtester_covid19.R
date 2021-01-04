@@ -78,7 +78,7 @@ exp_design <- expand.grid(r0                            = 2.5,
                           hospital_probability_age      = paste(0.049,0.03024,0.1197,0.5922,sep=','),
                           hospital_mean_delay_age       = paste(3,7,7,6,sep=','),
                           
-                          disease_transmission_age      = 0,
+                          disease_susceptibility_age      = 1,
 
                           stringsAsFactors = F)
 
@@ -136,22 +136,18 @@ exp_design_cts_all <- exp_design_cts
 exp_design_cts_all$event_log_level          <- 'ContactTracing'
 exp_design_cts_all$gtester_label            <- 'covid_tracing_all'
 
-# age-specific transmission: baseline ----
+# age-specific susceptibility: baseline ----
 # note: this should provide exact the same results as 'covid_base'
 exp_design_transm <- exp_design
-exp_design_transm$gtester_label            <- 'covid_transm_base'
-# b0 <- 0.124492138353664; b1 <- 39.6458896077442            # from: disease_covid19_lognormal 
-b0 <- 0.14743616688954;  b1 <- 43.9598287259418              # from: disease_covid19_age  
-tmp_transmission <- rep((exp_design_transm$r0 - b0) / b1,100)
-exp_design_transm$disease_transmission_age <- paste(tmp_transmission,collapse=',')
-exp_design_transm$r0 <- -1  
+exp_design_transm$gtester_label            <- 'covid_suscept_base'
+tmp_susceptible  <- rep(1,100)
+exp_design_transm$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
 
-# age-specific transmission: adapted
+# age-specific susceptibility: adapted
 exp_design_transm_adapt <- exp_design
-exp_design_transm_adapt$gtester_label            <- 'covid_transm_adapt'
-tmp_transmission[seq(1,91,9)] <- 0.057
-exp_design_transm_adapt$disease_transmission_age <- paste(tmp_transmission,collapse=',')
-exp_design_transm_adapt$r0 <- -1  
+exp_design_transm_adapt$gtester_label            <- 'covid_suscept_adapt'
+tmp_susceptible[-seq(1,91,9)] <- 0.90
+exp_design_transm_adapt$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
 
 # rbind all designs
 exp_design <- rbind(exp_design, exp_design_all,
@@ -171,7 +167,9 @@ exp_design$rng_seed[grepl('covid_transm',exp_design$gtester_label)] <- exp_desig
 
 # # selection? ----
 # exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
-# exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_transm_base','covid_transm_adapt'),]
+#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_transm_base','covid_transm_adapt'),]
+#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_all'),]
+#exp_design <- exp_design[!grepl('_all',exp_design$gtester_label),]
 
 
 ################################## #
@@ -180,7 +178,7 @@ exp_design$rng_seed[grepl('covid_transm',exp_design$gtester_label)] <- exp_desig
 project_dir <- run_rStride(exp_design               = exp_design,
                            dir_postfix              = dir_postfix,
                            ignore_stdout            = TRUE,
-                           remove_run_output        = TRUE )
+                           remove_run_output        = FALSE )
 
 
 ##################################### #
@@ -293,22 +291,26 @@ if(!setequal(project_summary,ref_project_summary)){
   diff_summary    <- setdiff(project_summary,ref_project_summary)
   smd_print(names(diff_summary),WARNING = T)
   
+  # remove new column names
+  diff_summary <- diff_summary[,names(diff_summary) %in% names(ref_project_summary)]
+  
   if(length(diff_summary)>1 && all(dim(project_summary) == dim(ref_project_summary))){
     flag <- rowSums(project_summary[,names(diff_summary)] != ref_project_summary[,names(diff_summary)])>0
     smd_print('EXP_ID with changes:', paste(unique(project_summary$gtester_label[flag]),collapse = ','))
     project_summary[flag,names(diff_summary)]
     ref_project_summary[flag,names(diff_summary)]
     
-    par(mfrow=c(1,2),mar=c(8,4,4,2))
+    #par(mfrow=c(1,2),mar=c(8,4,4,2))
+    par(mar=c(8,4,4,2))
     y_lim <- range(pretty(c(ref_project_summary$num_cases,project_summary$num_cases)))
     boxplot(num_cases ~ gtester_label,
-            data=ref_project_summary,main='REFERENCE',ylim=y_lim, las=2);grid()
+            data=ref_project_summary,main='REFERENCE',ylim=y_lim, las=2,xlab='');grid()
     boxplot(num_cases ~ gtester_label,
-            data=ref_project_summary,main='BOTH',ylim=y_lim, las=2);grid()
+            data=ref_project_summary,main='BOTH',ylim=y_lim, las=2,xlab='');grid()
     boxplot(num_cases ~ gtester_label,
             data=project_summary,add=T,
-            col=alpha(2,0.4),main='',ylim=y_lim,las=2)  ;
-    legend('topleft',c('reference','new'),fill=c(1,alpha(2,0.4)) ,cex=0.8)
+            col=alpha(2,0.4),main='',ylim=y_lim,las=2,xlab='')  ;
+    legend('bottomleft',c('reference','new'),fill=c(1,alpha(2,0.4)) ,cex=0.8)
     grid() 
     par(mfrow=c(1,1),mar=c(8,4,4,2))
 
