@@ -148,6 +148,10 @@ public:
         	return m_contact_tracing_list;
         }
 
+        void SetNonComplier(const ContactType::Id& poolType) {  m_non_complier[poolType] = true; }
+
+        bool IsNonComplier(const ContactType::Id& poolType) const { return m_non_complier[poolType]; }
+
 private:
         ///< Schedule an event, if the event should take place on simDay, it is executed right away.
         void ScheduleEvent(unsigned int simDay, const Event &event);
@@ -171,8 +175,11 @@ private:
         ///< Is this a participant in the social contact study?
         bool m_is_participant;
 
-        ///< Is the participant able to telework?
-        bool m_able_to_telework;
+		///< Is the participant able to telework?
+		bool m_able_to_telework;
+
+        ///< Is the person a non-complier to social distancing measures in the contact pools they belong to?
+        ContactType::IdSubscriptArray<bool> m_non_complier;
 
         ///< Is this an index case for track,trace, isolate strategies
         bool m_is_tracing_index;

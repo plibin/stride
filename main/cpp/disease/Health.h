@@ -111,7 +111,7 @@ public:
         void SetSusceptible() { m_status = HealthStatus::Susceptible; }
 
         /// Start the infection.
-        void StartInfection(unsigned int id_index_case, unsigned int id_infector);
+        void StartInfection(unsigned int id_index_case, unsigned int id_infector, double individual_transmission_probability);
 
         /// Stop the infection.
         void StopInfection();
@@ -127,6 +127,11 @@ public:
 
 		/// Is this individual PCR detectable?
 		bool IsPcrDetectable(unsigned int detectable_delay) const { return GetDiseaseCounter() >= detectable_delay; }
+
+        /// Get individual transmission probability
+        double GetIndividualTransmissionProbability() const {
+        		return m_individual_transmission_probability;
+        }
 
 private:
         /// Get the disease counter.
@@ -152,6 +157,8 @@ private:
 
         double             m_sympt_cnt_reduction_work_school;  ///< Proportional reduction of presence in work/school pool when symptomatic
         double             m_sympt_cnt_reduction_community;    ///< Proportional reduction of presence in the community pools when symptomatic
+
+        double			  m_individual_transmission_probability; ///< Probability of transmission when this individual is infectious & contacts a susceptible individual
 };
 
 } // namespace stride

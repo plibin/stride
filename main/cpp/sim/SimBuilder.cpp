@@ -22,6 +22,7 @@
 
 #include "contact/ContactType.h"
 #include "contact/InfectorMap.h"
+#include "contact/NonComplianceSeeder.h"
 #include "disease/DiseaseSeeder.h"
 #include "disease/HealthSeeder.h"
 #include "disease/ImmunitySeeder.h"
@@ -85,7 +86,7 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
         // Initialize the transmission profile (fixes rates).
         // --------------------------------------------------------------
         const auto diseasePt = ReadDiseasePtree();
-        sim->m_transmission_profile.Initialize(m_config, diseasePt);
+        sim->m_transmission_profile.Initialize(m_config, diseasePt, sim->m_rn_man);
 
         // --------------------------------------------------------------
         // Seed the population with health data.
@@ -101,7 +102,7 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
         // --------------------------------------------------------------
         // Seed population with infection.
         // --------------------------------------------------------------
-        DiseaseSeeder(m_config, sim->m_rn_man).Seed(sim->m_population);
+        DiseaseSeeder(m_config, sim->m_rn_man).Seed(sim->m_population, sim->m_transmission_profile);
         sim->m_num_daily_imported_cases = m_config.get<double>("run.num_daily_imported_cases",0);
 
         // --------------------------------------------------------------
@@ -130,6 +131,11 @@ shared_ptr<Sim> SimBuilder::Build(shared_ptr<Sim> sim, shared_ptr<Population> po
         // Seed population with survey participants.
         // --------------------------------------------------------------
         SurveySeeder(m_config, sim->m_rn_man).Seed(sim->m_population);
+
+        // --------------------------------------------------------------
+        // Seed population with non-compliant individuals.
+        // --------------------------------------------------------------
+        NonComplianceSeeder(m_config, sim->m_rn_man).Seed(sim->m_population);
 
         // --------------------------------------------------------------
         // Done.

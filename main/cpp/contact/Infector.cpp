@@ -58,11 +58,11 @@ public:
         static void Trans(const std::shared_ptr<spdlog::logger>& logger, const Person* p1, const Person* p2,
                           ContactType::Id type, unsigned short int sim_day, unsigned int id_index_case)
         {
-                logger->info("[TRAN] {} {} {} {} {} {} {} {} {} {} {} {}", p2->GetId(), p1->GetId(), p2->GetAge(), p1->GetAge(),
+                logger->info("[TRAN] {} {} {} {} {} {} {} {} {} {} {} {} {}", p2->GetId(), p1->GetId(), p2->GetAge(), p1->GetAge(),
                              ToString(type), sim_day, id_index_case,
 							 p2->GetHealth().GetStartInfectiousness(),p2->GetHealth().GetEndInfectiousness(),
 							 p2->GetHealth().GetStartSymptomatic(),p2->GetHealth().GetEndSymptomatic(),
-							 p1->GetHealth().IsSymptomatic());
+							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetIndividualTransmissionProbability());
         }
 };
 
@@ -95,7 +95,7 @@ public:
                              ToString(type), sim_day, id_index_case,
 							 p2->GetHealth().GetStartInfectiousness(),p2->GetHealth().GetEndInfectiousness(),
 							 p2->GetHealth().GetStartSymptomatic(),p2->GetHealth().GetEndSymptomatic(),
-							 p1->GetHealth().IsSymptomatic());
+							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetIndividualTransmissionProbability());
         }
 };
 
@@ -115,26 +115,31 @@ inline double GetContactProbability(const AgeContactProfile& profile, const Pers
 		// initiate a contact adjustment factor, to account for physical distancing and/or contact intensity
     	double cnt_adjustment_factor = 1;
 
-		// account for physical distancing at work and in the community
-		if(pType == Id::Workplace){
-			cnt_adjustment_factor = (1-cnt_reduction_work);
-		}
-		// account for physical distancing in the community
-		if((pType == Id::PrimaryCommunity || pType == Id::SecondaryCommunity)){
+    		// Chek if one of the persons is a non-complier to social distancing measures
+    		// in this particular pooltype
+    		if ((not p1->IsNonComplier(pType)) and (not p2->IsNonComplier(pType))) {
+    			// account for physical distancing at work and in the community
+    			if(pType == Id::Workplace){
+    				cnt_adjustment_factor = (1-cnt_reduction_work);
+    			}
+    			// account for physical distancing in the community
+    			if((pType == Id::PrimaryCommunity || pType == Id::SecondaryCommunity)){
 
-			// apply inter-generation distancing factor if age cutoff is > 0 and at least one age is > cutoff
-			if((cnt_reduction_intergeneration > 0) &&
-				((p1->GetAge() > cnt_reduction_intergeneration_cutoff) || (p2->GetAge() > cnt_reduction_intergeneration_cutoff))){
-				cnt_adjustment_factor = (1-cnt_reduction_intergeneration);
-			} else {
-				// apply uniform community distancing
-				cnt_adjustment_factor = (1-cnt_reduction_other);
-			}
-		}
-		// account for physical distancing at school
-		if(pType == Id::K12School){
-			cnt_adjustment_factor = (1-cnt_reduction_school);
-		}
+    				// apply inter-generation distancing factor if age cutoff is > 0 and at least one age is > cutoff
+    				if((cnt_reduction_intergeneration > 0) &&
+    					((p1->GetAge() > cnt_reduction_intergeneration_cutoff) || (p2->GetAge() > cnt_reduction_intergeneration_cutoff))){
+    					cnt_adjustment_factor = (1-cnt_reduction_intergeneration);
+    				} else {
+    					// apply uniform community distancing
+    					cnt_adjustment_factor = (1-cnt_reduction_other);
+    				}
+    			}
+    			// account for physical distancing at school
+    			if(pType == Id::K12School){
+    				cnt_adjustment_factor = (1-cnt_reduction_school);
+    			}
+    		}
+
 
 		// account for contact intensity in household clusters
 		if(pType == Id::HouseholdCluster){
@@ -189,6 +194,7 @@ inline double GetContactProbability(const AgeContactProfile& profile, const Pers
         if (contact_probability >= 1) {
         	contact_probability = 0.999;
         }
+
 
     	// assume fully connected households
 		if(pType == Id::Household){
@@ -258,6 +264,7 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
                                 // log contact if person 2 is participating in survey
                                 LP::Contact(eventLogger, p2, p1, pType, simDay, cProb, tProb_p2_p1);
 
+
                                 // if track&trace is in place, option to register (both) contact(s)
                                 p1->RegisterContact(p2);
                                 p2->RegisterContact(p1);
@@ -265,12 +272,14 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
                                 // transmission & infection.
                                 // note: no tertiary infections with TIC; so mark new case as 'recovered'
                                 auto& h1 = p1->GetHealth();
-								auto& h2 = p2->GetHealth();
+                                auto& h2 = p2->GetHealth();
 
 								// if h1 infectious, account for susceptibility of p2
 								if (h1.IsInfectious() && h2.IsSusceptible() &&
 									cHandler.HasTransmission(tProb_p1_p2)) {
-										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
+
+										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), transProfile.DrawIndividualProbability());
+
 										if (TIC)
 												h2.StopInfection();
 										LP::Trans(eventLogger, p1, p2, pType, simDay, h1.GetIdIndexCase());
@@ -279,7 +288,9 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
 								// if h2 infectious, account for susceptibility of p1
 								if (h2.IsInfectious() && h1.IsSusceptible() &&
 									cHandler.HasTransmission(tProb_p2_p1)) {
-										h1.StartInfection(h2.GetIdIndexCase(),p2->GetId());
+
+									h1.StartInfection(h2.GetIdIndexCase(),p2->GetId(), transProfile.DrawIndividualProbability());
+
 										if (TIC)
 												h1.StopInfection();
 										LP::Trans(eventLogger, p2, p1, pType, simDay, h2.GetIdIndexCase());
@@ -335,13 +346,15 @@ void Infector<LL, TIC, true>::Exec(ContactPool& pool, const AgeContactProfile& p
                                         continue;
                                 }
                                 const double cProb_p1 = GetContactProbability(profile, p1, p2, pSize, pType,
-                                		cnt_reduction_work, cnt_reduction_other,cnt_reduction_school, cnt_reduction_intergeneration,
-										cnt_reduction_intergeneration_cutoff,population,m_cnt_intensity_householdCluster);
+                                								cnt_reduction_work, cnt_reduction_other,cnt_reduction_school,
+															cnt_reduction_intergeneration, cnt_reduction_intergeneration_cutoff,
+															population, m_cnt_intensity_householdCluster);
                                 const auto  tProb_p1_p2   = transProfile.GetProbability(p1,p2);
                                 if (cHandler.HasContactAndTransmission(cProb_p1, tProb_p1_p2)) {
+
                                         auto& h2 = p2->GetHealth();
                                         if (h1.IsInfectious() && h2.IsSusceptible()) {
-                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
+                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), transProfile.DrawIndividualProbability());
 
                                                 // if track&trace is in place, option to register (both) contact(s)
                                                 p1->RegisterContact(p2); //TODO: make use of "log policy" template

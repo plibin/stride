@@ -28,6 +28,7 @@
 #include <trng/uniform_int_dist.hpp>
 #include <functional>
 #include <pcg/pcg_random.hpp>
+#include <random>
 #include <randutils/randutils.hpp>
 #include <string>
 #include <vector>

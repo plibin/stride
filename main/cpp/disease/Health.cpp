@@ -31,18 +31,21 @@ Health::Health(unsigned short int start_infectiousness, unsigned short int start
       m_start_symptomatic(start_symptomatic), m_end_infectiousness(start_infectiousness + time_infectious),
       m_end_symptomatic(start_symptomatic + time_symptomatic), m_id_index_case(0U), m_id_infector(0U),
 		m_sympt_cnt_reduction_work_school(sympt_cnt_reduction_work_school),
-		m_sympt_cnt_reduction_community(sympt_cnt_reduction_community)
+		m_sympt_cnt_reduction_community(sympt_cnt_reduction_community),
+		m_individual_transmission_probability(0)
 {
 }
 
 
-void Health::StartInfection(unsigned int id_index_case, unsigned int id_infector)
+void Health::StartInfection(unsigned int id_index_case, unsigned int id_infector, double individual_transmission_probability)
 {
         AssertThrow(m_status == HealthStatus::Susceptible, "Inconsistent Health change", nullptr);
         m_status = HealthStatus::Exposed;
         ResetDiseaseCounter();
         m_id_index_case = id_index_case;
         m_id_infector   = id_infector;
+
+        m_individual_transmission_probability = individual_transmission_probability;
 }
 
 bool Health::NumberDaysSymptomatic(unsigned int days_before) const

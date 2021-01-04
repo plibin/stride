@@ -41,8 +41,11 @@ INSTALL( FILES
             rStride_r0.R 	
             rStride_intervention_baseline.R
             rStride_intervention.R
+            rStride_superspreading.R	
+            rStride_trans_prob_estimation.R			 	 
             rStride_universal_testing.R
             rStride_pop.R				 
+
 	DESTINATION ${BIN_INSTALL_LOCATION}  
 	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_WRITE GROUP_READ
 )

@@ -20,11 +20,12 @@
 
 #pragma once
 
+#include "pop/Person.h"
+#include "util/RnMan.h"
+
 #include <boost/property_tree/ptree.hpp>
 #include <vector>
 #include <numeric>
-
-#include "pop/Person.h"
 
 namespace stride {
 
@@ -34,53 +35,44 @@ namespace stride {
 class TransmissionProfile
 {
 public:
-        /// Initialize.
-        TransmissionProfile() : m_transmission_probability_age(100) {
-        }
+	TransmissionProfile(): m_transmission_probability(0),
+							m_transmission_probability_distribution("Constant"),
+							m_transmission_probability_distribution_overdispersion(0),
+							m_susceptibility_age(100),
+							m_rel_transmission_asymptomatic(1),
+							m_rel_susceptibility_children(1),
+							m_rn_man_p() {}
 
-        /// Return average transmission probability (not weighted).
-        double GetProbability() const {
-        	double transmission_probability_mean = accumulate(m_transmission_probability_age.begin(),
-        													  m_transmission_probability_age.end(),
-															  0.0) / m_transmission_probability_age.size();
-        	return transmission_probability_mean;
-        }
+	/// Initialize.
+	void Initialize(const boost::property_tree::ptree& configPT, const boost::property_tree::ptree& diseasePt, util::RnMan& rnMan);
 
-        /// Return age-specific transmission probability.
-        double GetProbability(unsigned int age) const {
-          	if(age < m_transmission_probability_age.size()){
-        		return m_transmission_probability_age[age];
-        	} else{
-        		return m_transmission_probability_age[m_transmission_probability_age.size()-1];
-        	}
-        }
+	/// Return mean transmission probability.
+	double GetProbability() const;
 
-        /// Return age- and health-specific transmission probability.
-		double GetProbability(Person* p_infected, Person* p_susceptible) const {
+	/// Return mean age-specfici susceptibility adjustment factor.
+	double GetSusceptibilityFactor() const;
 
-			// infector specific transmission probability
-			double probability_infected    = (p_infected->GetHealth().IsSymptomatic()) ? 1 : m_rel_transmission_asymptomatic;
+	/// Return age-specific susceptibility adjustment factor.
+	double GetSusceptibilityFactor(unsigned int age) const;
 
-			// deprecated... this binary option will be removed in the future
-			double probability_susceptible_child = (p_susceptible->GetAge() < 18) ? m_rel_susceptibility_children : 1;
+	/// Return age-, health-, and person-specific transmission probability.
+	double GetProbability(Person* p_infected, Person* p_susceptible) const;
 
-			// get age-specific transmission value based on the age of the susceptible individual
-			double probability_susceptible = GetProbability(p_susceptible->GetAge());
-
-
-			// return combination
-			return probability_infected * probability_susceptible_child * probability_susceptible;
-		}
-
-        /// Initialize.
-        void Initialize(const boost::property_tree::ptree& configPt, const boost::property_tree::ptree& diseasePt);
-
+	/// Draw individual transmission probability from distribution.
+	double DrawIndividualProbability() const;
 private:
-        std::vector<double> m_transmission_probability_age;
+	double 						m_transmission_probability;
 
-        double             m_rel_transmission_asymptomatic;	   ///< Relative reduction of transmission for asymptomatic cases
-        double             m_rel_susceptibility_children;	   ///< Relative reduction of susceptibility for children vs. adults
+	std::string 					m_transmission_probability_distribution;
+	double 						m_transmission_probability_distribution_overdispersion;
 
+	std::vector<double>			m_susceptibility_age;
+
+    double            			m_rel_transmission_asymptomatic; ///< Relative reduction of transmission for asymptomatic cases
+    double             			m_rel_susceptibility_children; ///< Relative reduction of susceptibility for children vs. adults
+
+	std::unique_ptr<util::RnMan> m_rn_man_p;	// FIXME is this ok cfr. splitting of random number stream?
 };
 
 } // namespace stride
+
