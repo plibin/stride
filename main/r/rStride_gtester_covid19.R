@@ -79,6 +79,8 @@ exp_design <- expand.grid(r0                            = 2.5,
                           hospital_mean_delay_age       = paste(3,7,7,6,sep=','),
                           
                           disease_susceptibility_age      = 1,
+                          transmission_probability_distribution = 'Constant',
+                          transmission_probability_distribution_overdispersion = 0,
 
                           stringsAsFactors = F)
 
@@ -138,22 +140,36 @@ exp_design_cts_all$gtester_label            <- 'covid_tracing_all'
 
 # age-specific susceptibility: baseline ----
 # note: this should provide exact the same results as 'covid_base'
-exp_design_transm <- exp_design
-exp_design_transm$gtester_label            <- 'covid_suscept_base'
+exp_design_susceptible <- exp_design
+exp_design_susceptible$gtester_label            <- 'covid_suscept_base'
 tmp_susceptible  <- rep(1,100)
-exp_design_transm$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
+exp_design_susceptible$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
 
 # age-specific susceptibility: adapted
-exp_design_transm_adapt <- exp_design
-exp_design_transm_adapt$gtester_label            <- 'covid_suscept_adapt'
+exp_design_susceptible_adapt <- exp_design
+exp_design_susceptible_adapt$gtester_label            <- 'covid_suscept_adapt'
 tmp_susceptible[-seq(1,91,9)] <- 0.90
-exp_design_transm_adapt$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
+exp_design_susceptible_adapt$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
+
+
+# individual-based transmission: baseline ----
+exp_design_transm <- exp_design
+exp_design_transm$gtester_label            <- 'covid_transm'
+exp_design_transm$transmission_probability_distribution   <- 'Constant'
+
+# individual-based transmission: adapted
+exp_design_transm_adapt <- exp_design
+exp_design_transm_adapt$gtester_label            <- 'covid_transm_gamma'
+exp_design_transm_adapt$transmission_probability_distribution   <- 'Gamma'
+exp_design_transm_adapt$transmission_probability_distribution_overdispersion   <- 0.8
+
 
 # rbind all designs
 exp_design <- rbind(exp_design, exp_design_all,
                     exp_design_cts_all, exp_design_cts,
                     exp_design_daily, exp_design_dist,
                     exp_design_15min, exp_design_hhcl,
+                    exp_design_susceptible,exp_design_susceptible_adapt,
                     exp_design_transm,exp_design_transm_adapt)
 
 
@@ -162,23 +178,28 @@ exp_design <- rbind(exp_design, exp_design_all,
 exp_design$rng_seed <- 1:nrow(exp_design)
 dim(exp_design)
 
-# align rng seeds for "base" and "transm_base"
+# align rng seeds for "base" and "suscept_base" and "transm_base"
+exp_design$rng_seed[grepl('covid_suscept',exp_design$gtester_label)] <- exp_design$rng_seed[exp_design$gtester_label %in% c('covid_base')]
 exp_design$rng_seed[grepl('covid_transm',exp_design$gtester_label)] <- exp_design$rng_seed[exp_design$gtester_label %in% c('covid_base')]
 
 # # selection? ----
 # exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
-#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_transm_base','covid_transm_adapt'),]
+#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_suscept','covid_suscept_adapt'),]
 #exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_all'),]
-#exp_design <- exp_design[!grepl('_all',exp_design$gtester_label),]
+#exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_transm','covid_transm_gamma'),]
+# exp_design <- exp_design[!grepl('_all',exp_design$gtester_label) &
+#                            !grepl('_transm',exp_design$gtester_label),]
 
+#exp_design <- exp_design[!grepl('_transm',exp_design$gtester_label),]
 
+table(exp_design$gtester_label)
 ################################## #
 ## RUN rSTRIDE                  ####
 ################################## #
 project_dir <- run_rStride(exp_design               = exp_design,
                            dir_postfix              = dir_postfix,
                            ignore_stdout            = TRUE,
-                           remove_run_output        = FALSE )
+                           remove_run_output        = TRUE )
 
 
 ##################################### #
@@ -229,7 +250,7 @@ project_summary$total_time     <- NULL
 y_lim     <- range(pretty(c(project_summary$num_cases*0.9,project_summary$num_cases*1.1)))
 bplt_mean <- aggregate(num_cases ~ gtester_label,data=project_summary,mean)
 bplt_mean$num_cases <- round(bplt_mean$num_cases)
-bplt <- boxplot(num_cases ~ gtester_label,data=project_summary,las=2,ylim=y_lim)
+bplt <- boxplot(num_cases ~ gtester_label,data=project_summary,las=2,ylim=y_lim,xlab='')
 x_ticks_mean <- (1:ncol(bplt$stats))+0.2
 points(x = x_ticks_mean,
        y = bplt_mean$num_cases,
@@ -245,11 +266,12 @@ text(x = 1:ncol(bplt$stats),
      labels = bplt_mean$num_cases,
      pos = 3,
      col=4)
-legend('topright',
+legend('bottom',
        c('mean',
          'mean ± 10%'),
        pch=c('*','I'),
-       col=4)
+       col=4,
+       ncol=2)
 grid()
 
 # load the incidence output
@@ -288,11 +310,16 @@ if(!setequal(project_summary,ref_project_summary)){
     
   }
   
+  # remove new column names
+  project_summary <- project_summary[,names(project_summary) %in% names(ref_project_summary)]
+  
+  # remove redundant exp
+  project_summary <- project_summary[,names(project_summary) %in% names(ref_project_summary)]
+  
+  # get difference
   diff_summary    <- setdiff(project_summary,ref_project_summary)
   smd_print(names(diff_summary),WARNING = T)
   
-  # remove new column names
-  diff_summary <- diff_summary[,names(diff_summary) %in% names(ref_project_summary)]
   
   if(length(diff_summary)>1 && all(dim(project_summary) == dim(ref_project_summary))){
     flag <- rowSums(project_summary[,names(diff_summary)] != ref_project_summary[,names(diff_summary)])>0
