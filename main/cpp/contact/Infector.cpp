@@ -62,7 +62,7 @@ public:
                              ToString(type), sim_day, id_index_case,
 							 p2->GetHealth().GetStartInfectiousness(),p2->GetHealth().GetEndInfectiousness(),
 							 p2->GetHealth().GetStartSymptomatic(),p2->GetHealth().GetEndSymptomatic(),
-							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetIndividualTransmissionProbability());
+							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetRelativeInfectiousness());
         }
 };
 
@@ -95,7 +95,7 @@ public:
                              ToString(type), sim_day, id_index_case,
 							 p2->GetHealth().GetStartInfectiousness(),p2->GetHealth().GetEndInfectiousness(),
 							 p2->GetHealth().GetStartSymptomatic(),p2->GetHealth().GetEndSymptomatic(),
-							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetIndividualTransmissionProbability());
+							 p1->GetHealth().IsSymptomatic(), p2->GetHealth().GetRelativeInfectiousness());
         }
 };
 
@@ -278,7 +278,7 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
 								if (h1.IsInfectious() && h2.IsSusceptible() &&
 									cHandler.HasTransmission(tProb_p1_p2)) {
 
-										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), transProfile.DrawIndividualProbability());
+										h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
 
 										if (TIC)
 												h2.StopInfection();
@@ -289,7 +289,7 @@ void Infector<LL, TIC, TO>::Exec(ContactPool& pool, const AgeContactProfile& pro
 								if (h2.IsInfectious() && h1.IsSusceptible() &&
 									cHandler.HasTransmission(tProb_p2_p1)) {
 
-									h1.StartInfection(h2.GetIdIndexCase(),p2->GetId(), transProfile.DrawIndividualProbability());
+									h1.StartInfection(h2.GetIdIndexCase(),p2->GetId());
 
 										if (TIC)
 												h1.StopInfection();
@@ -354,7 +354,7 @@ void Infector<LL, TIC, true>::Exec(ContactPool& pool, const AgeContactProfile& p
 
                                         auto& h2 = p2->GetHealth();
                                         if (h1.IsInfectious() && h2.IsSusceptible()) {
-                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId(), transProfile.DrawIndividualProbability());
+                                                h2.StartInfection(h1.GetIdIndexCase(),p1->GetId());
 
                                                 // if track&trace is in place, option to register (both) contact(s)
                                                 p1->RegisterContact(p2); //TODO: make use of "log policy" template

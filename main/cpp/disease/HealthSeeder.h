@@ -11,6 +11,7 @@
  *  along with the software. If not, see <http://www.gnu.org/licenses/>.
  *
  *  Copyright 2018, Kuylen E, Willem L, Broeckhove J
+ *  Copyright 2021, Willem L, Kuylen E, Libin P
  */
 
 /**
@@ -29,6 +30,7 @@ namespace stride {
 
 class ContactHandler;
 class Population;
+class TransmissionProfile;
 
 /**
  * Seeds the population with Health data.
@@ -40,7 +42,7 @@ public:
         explicit HealthSeeder(const boost::property_tree::ptree& diseasePt);
 
         /// Seeds the population with Health data.
-        void Seed(const std::shared_ptr<Population>& pop, std::vector<ContactHandler>& handlers);
+        void Seed(const std::shared_ptr<Population>& pop, const TransmissionProfile& transProfile, std::vector<ContactHandler>& handlers);
 
 private:
         /// Utility method to extract distribution from data in ptree.

@@ -42,7 +42,7 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
     boost::optional<double> transmission_probability_as_input = configPt.get_optional<double>("run.transmission_probability");
     boost::optional<double> r0_as_input = configPt.get_optional<double>("run.r0");
 
-    // If available, use mean transmission probability as input
+    // If available, use mean transmission probability as input (dominates an input value for R0)
     if (transmission_probability_as_input) {
     		m_transmission_probability = *transmission_probability_as_input;
 
@@ -112,7 +112,7 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
 
 }
 
-double TransmissionProfile::GetProbability() const {
+double TransmissionProfile::GetHomogeneousProbability() const {
 	return m_transmission_probability;
 }
 
@@ -122,7 +122,7 @@ double TransmissionProfile::GetSusceptibilityFactor() const {
 	return susceptibility_mean;
 }
 
-double TransmissionProfile::GetSusceptibilityFactor(unsigned int age) const {
+double TransmissionProfile::GetIndividualSusceptibility(unsigned int age) const {
 	if (age < m_susceptibility_age.size()) {
 		return m_susceptibility_age[age];
 	} else {
@@ -132,7 +132,7 @@ double TransmissionProfile::GetSusceptibilityFactor(unsigned int age) const {
 
 double TransmissionProfile::GetProbability(Person* p_infected, Person* p_susceptible) const {
 	// Get individual transmission probability of infector
-	double transmission_probability_infector = p_infected->GetHealth().GetIndividualTransmissionProbability();
+	double transmission_probability_infector = p_infected->GetHealth().GetRelativeInfectiousness();
 
 	// Adjustment for asymptomatic cases
 	double adjustment_asymptomatic = (p_infected->GetHealth().IsSymptomatic()) ? 1 : m_rel_transmission_asymptomatic;
@@ -142,12 +142,13 @@ double TransmissionProfile::GetProbability(Person* p_infected, Person* p_suscept
 	// deprecated... this binary option will be removed in the future
 	double adjustment_susceptible_child = (p_susceptible->GetAge() < 18) ? m_rel_susceptibility_children : 1;
 
-	double adjustment_susceptible_age = GetSusceptibilityFactor(p_susceptible->GetAge());
+	double adjustment_susceptible_age = p_susceptible->GetHealth().GetRelativeSusceptibility();
 
 	return transmission_probability_infector * adjustment_asymptomatic * adjustment_susceptible_child * adjustment_susceptible_age;
 }
 
-double TransmissionProfile::DrawIndividualProbability() const {
+double TransmissionProfile::GetIndividualInfectiousness(ContactHandler& generator) const {
+
 	// If mean transmission probability is 0, return 0.
 	// FIXME Is this ok?
 	if (m_transmission_probability == 0) {
@@ -167,7 +168,6 @@ double TransmissionProfile::DrawIndividualProbability() const {
 		double cdf1 = cdf(gamma_dist, 0.0);
 		double cdf2 = cdf(gamma_dist, 1.0);
 
-		auto generator = m_rn_man_p->GetUniform01Generator();
 		double individual_probability = quantile(gamma_dist, cdf1 + generator() * (cdf2 - cdf1));
 
 		return individual_probability;

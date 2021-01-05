@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "contact/ContactHandler.h"
 #include "pop/Person.h"
 #include "util/RnMan.h"
 
@@ -47,19 +48,19 @@ public:
 	void Initialize(const boost::property_tree::ptree& configPT, const boost::property_tree::ptree& diseasePt, util::RnMan& rnMan);
 
 	/// Return mean transmission probability.
-	double GetProbability() const;
+	double GetHomogeneousProbability() const;
 
 	/// Return mean age-specfici susceptibility adjustment factor.
 	double GetSusceptibilityFactor() const;
 
 	/// Return age-specific susceptibility adjustment factor.
-	double GetSusceptibilityFactor(unsigned int age) const;
+	double GetIndividualSusceptibility(unsigned int age) const;
 
 	/// Return age-, health-, and person-specific transmission probability.
 	double GetProbability(Person* p_infected, Person* p_susceptible) const;
 
 	/// Draw individual transmission probability from distribution.
-	double DrawIndividualProbability() const;
+	double GetIndividualInfectiousness(ContactHandler& generator) const;
 private:
 	double 						m_transmission_probability;
 

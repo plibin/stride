@@ -22,9 +22,10 @@
 
 #include "contact/AgeContactProfiles.h"
 #include "contact/ContactHandler.h"
+#include "contact/EventLogMode.h"
 #include "contact/InfectorExec.h"
-#include "contact/TransmissionProfile.h"
 #include "disease/PublicHealthAgency.h"
+#include "disease/TransmissionProfile.h"
 #include "disease/UniversalTesting.h"
 
 #include "util/RnMan.h"
@@ -32,7 +33,7 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <string>
-#include "../contact/EventLogMode.h"
+
 
 namespace stride {
 
@@ -65,7 +66,7 @@ public:
         std::shared_ptr<Population> GetPopulation() { return m_population; }
 
         /// Get the stored transmission probability.
-        double GetTransmissionProbability() const { return m_transmission_profile.GetProbability(); }
+        double GetTransmissionProbability() const { return m_transmission_profile.GetHomogeneousProbability(); }
 
         /// Get the random number manager.
         util::RnMan& RefRnManager() { return m_rn_man; }

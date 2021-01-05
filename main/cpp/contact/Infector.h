@@ -21,10 +21,10 @@
 #pragma once
 
 #include "EventLogMode.h"
-#include "TransmissionProfile.h"
 #include "calendar/Calendar.h"
 #include "contact/AgeContactProfile.h"
 #include "contact/ContactHandler.h"
+#include "disease/TransmissionProfile.h"
 #include "pop/Population.h"
 
 #include <memory>
