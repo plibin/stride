@@ -28,9 +28,12 @@
 
 namespace stride {
 
-class ContactHandler;
 class Population;
 class TransmissionProfile;
+
+namespace util {
+class RnHandler;
+}
 
 /**
  * Seeds the population with Health data.
@@ -42,7 +45,7 @@ public:
         explicit HealthSeeder(const boost::property_tree::ptree& diseasePt);
 
         /// Seeds the population with Health data.
-        void Seed(const std::shared_ptr<Population>& pop, const TransmissionProfile& transProfile, std::vector<ContactHandler>& handlers);
+        void Seed(const std::shared_ptr<Population>& pop, const TransmissionProfile& transProfile, std::vector<util::RnHandler>& handlers);
 
 private:
         /// Utility method to extract distribution from data in ptree.

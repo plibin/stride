@@ -29,6 +29,7 @@ namespace stride {
 
 using namespace std;
 using namespace stride::ContactType;
+using namespace stride::util;
 
 void Person::UpdateEvents(unsigned int simDay)
 {
@@ -71,7 +72,7 @@ void Person::Isolate(unsigned int simDay, unsigned int from, unsigned int to)
 void Person::Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOff,
 		bool isTeleworkEnforced, bool isHouseholdClusteringAllowed,
         bool isIsolatedFromHousehold,
-		ContactHandler& cHandler,
+		util::RnHandler& rnHandler,
         const std::shared_ptr<Calendar> calendar)
 
 {
@@ -108,14 +109,14 @@ void Person::Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOf
         if (m_health.IsSymptomatic()) {
 
         	// probability of staying home from school/work given symptoms
-        	if(cHandler() < m_health.GetSymptomaticCntReductionWorkSchool()){
+        	if(rnHandler.Binomial(m_health.GetSymptomaticCntReductionWorkSchool())){
         		m_in_pools[Id::K12School]          = false;
 				m_in_pools[Id::College]            = false;
 				m_in_pools[Id::Workplace]          = false;
         	}
 
             // probability of staying home from community pools given symptoms
-        	if(cHandler() < m_health.GetSymptomaticCntReductionCommunity()){
+        	if(rnHandler.Binomial(m_health.GetSymptomaticCntReductionCommunity())){
 				m_in_pools[Id::PrimaryCommunity]   = false;
 				m_in_pools[Id::SecondaryCommunity] = false;
         	}

@@ -21,18 +21,17 @@
 #pragma once
 
 #include "contact/AgeContactProfiles.h"
-#include "contact/ContactHandler.h"
 #include "contact/EventLogMode.h"
 #include "contact/InfectorExec.h"
 #include "disease/PublicHealthAgency.h"
 #include "disease/TransmissionProfile.h"
 #include "disease/UniversalTesting.h"
-
 #include "util/RnMan.h"
-
+#include "util/RnHandler.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <string>
+
 
 
 namespace stride {
@@ -42,6 +41,7 @@ class Population;
 
 namespace util {
 class RnMan;
+class RnHandler;
 }
 
 /**
@@ -91,7 +91,7 @@ private:
 
         std::shared_ptr<Calendar>   m_calendar;         ///< Management of calendar.
         AgeContactProfiles          m_contact_profiles; ///< Contact profiles w.r.t age.
-        std::vector<ContactHandler> m_handlers;         ///< Contact handlers (random numbers & probabilities).
+        std::vector<util::RnHandler> m_rn_handlers;         ///< Random number handlers (random numbers & binomial trials).
         InfectorExec*               m_infector_default; ///< Executes optimized transmission loops in contact pools.
         InfectorExec*               m_infector_tracing; ///< Executes all or optimized transmission loops in contact pools.
         std::shared_ptr<Population> m_population;       ///< Pointer to the Population.

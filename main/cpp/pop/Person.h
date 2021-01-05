@@ -20,15 +20,16 @@
 
 #pragma once
 
+#include "calendar/Calendar.h"
 #include "contact/ContactType.h"
 #include "contact/IdSubscriptArray.h"
-#include "contact/ContactHandler.h"
 #include "disease/Health.h"
-#include "calendar/Calendar.h"
+#include "util/RnHandler.h"
 
 #include <cstddef>
 #include <queue>
 #include <vector>
+
 
 namespace stride {
 
@@ -108,7 +109,7 @@ public:
         void Update(bool isRegularWeekday, bool isK12SchoolOff, bool isCollegeOff,
         		bool isWorkplaceDistancingEnforced, bool isHouseholdClusteringAllowed, 
         		bool isIsolatedFromHousehold, 
-                ContactHandler& cHandler,
+				util::RnHandler& rnHandler,
                 const std::shared_ptr<Calendar> calendar);
 
         /// Set the age of the person

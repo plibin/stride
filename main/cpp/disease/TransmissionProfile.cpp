@@ -31,7 +31,7 @@ using namespace std;
 using namespace boost::property_tree;
 using namespace stride::util;
 
-void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt, util::RnMan& rnMan)
+void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt)
 {
     // 1. setup general transmission aspects
     m_rel_transmission_asymptomatic   = diseasePt.get<double>("disease.rel_transmission_asymptomatic", 1);
@@ -107,8 +107,6 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
     		m_transmission_probability_distribution_overdispersion = configPt.get<double>("run.transmission_probability_distribution_overdispersion");
     }
 
-    // Save pointer to RnMan
-    m_rn_man_p = std::make_unique<util::RnMan>(rnMan);
 
 }
 
@@ -147,7 +145,7 @@ double TransmissionProfile::GetProbability(Person* p_infected, Person* p_suscept
 	return transmission_probability_infector * adjustment_asymptomatic * adjustment_susceptible_child * adjustment_susceptible_age;
 }
 
-double TransmissionProfile::GetIndividualInfectiousness(ContactHandler& generator) const {
+double TransmissionProfile::GetIndividualInfectiousness(RnHandler& generator) const {
 
 	// If mean transmission probability is 0, return 0.
 	// FIXME Is this ok?

@@ -20,15 +20,16 @@
 
 #pragma once
 
-#include "EventLogMode.h"
 #include "calendar/Calendar.h"
 #include "contact/AgeContactProfile.h"
-#include "contact/ContactHandler.h"
+#include "contact/EventLogMode.h"
 #include "disease/TransmissionProfile.h"
 #include "pop/Population.h"
+#include "util/RnHandler.h"
 
 #include <memory>
 #include <spdlog/spdlog.h>
+
 
 
 namespace {
@@ -73,7 +74,7 @@ class Infector
 public:
         ///
         static void Exec(ContactPool& pool, const AgeContactProfile& profile, const TransmissionProfile& transProfile,
-                         ContactHandler& cHandler, unsigned short int simDay, std::shared_ptr<spdlog::logger> eventLogger,
+        				 util::RnHandler& rnHandler, unsigned short int simDay, std::shared_ptr<spdlog::logger> eventLogger,
 						 double cnt_reduction_work, double cnt_reduction_other, double cnt_reduction_school,
 						 double cnt_reduction_intergenearion, unsigned int cnt_reduction_intergeneration_cutoff,
 						 std::shared_ptr<Population> population, double m_cnt_intensity_householdCluster);
@@ -88,7 +89,7 @@ class Infector<LL, TIC, true>
 public:
         ///
         static void Exec(ContactPool& pool, const AgeContactProfile& profile, const TransmissionProfile& transProfile,
-                         ContactHandler& cHandler, unsigned short int simDay, std::shared_ptr<spdlog::logger> eventLogger,
+        				 util::RnHandler& rnHandler, unsigned short int simDay, std::shared_ptr<spdlog::logger> eventLogger,
 						 double cnt_reduction_work, double cnt_reduction_other, double cnt_reduction_school,
 						 double cnt_reduction_intergeneration, unsigned int cnt_reduction_intergeneration_cutoff,
 						 std::shared_ptr<Population> population, double m_cnt_intensity_householdCluster);

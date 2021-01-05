@@ -21,8 +21,8 @@
 #pragma once
 
 #include "contact/ContactPool.h"
-#include "contact/ContactHandler.h"
 #include "util/RnMan.h"
+#include "util/RnHandler.h"
 #include "util/FileSys.h"
 #include "util/SegmentedVector.h"
 
@@ -51,7 +51,7 @@ public:
         void SetTelework(std::shared_ptr<Population> pop, util::RnMan& rnMan);
 
         /// Public Health Strategy: look for contacts of infected cases and quarantine infected cases
-		void PerformContactTracing(std::shared_ptr<Population> pop, ContactHandler& cHandler, const std::shared_ptr<Calendar> calendar);
+		void PerformContactTracing(std::shared_ptr<Population> pop, util::RnHandler& rnHandler, const std::shared_ptr<Calendar> calendar);
 
 		bool IsK12SchoolOff(unsigned int age, bool isPreSchoolOff, bool isPrimarySchoolOff, bool isSecondarySchoolOff, bool isCollegeOff);
 
@@ -61,7 +61,7 @@ public:
         /// Trace one individual
         void Trace(Person& p_case,
                 std::shared_ptr<Population> pop,
-                ContactHandler& cHandler,
+				util::RnHandler& rnHandler,
                 const std::shared_ptr<Calendar> calendar);
 
 private:

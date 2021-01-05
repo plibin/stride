@@ -21,12 +21,13 @@
 #include "HealthSeeder.h"
 
 #include "Health.h"
-#include "contact/ContactHandler.h"
 #include "disease/TransmissionProfile.h"
 #include "pop/Population.h"
 #include "util/Assert.h"
+#include "util/RnHandler.h"
 #include <boost/property_tree/ptree.hpp>
 #include <omp.h>
+
 
 using namespace boost::property_tree;
 using namespace stride::util;
@@ -82,7 +83,7 @@ unsigned short int HealthSeeder::Sample(const vector<double>& distribution, doub
         return ret;
 }
 
-void HealthSeeder::Seed(const std::shared_ptr<stride::Population>& pop, const TransmissionProfile& transProfile, vector<ContactHandler>& handlers)
+void HealthSeeder::Seed(const std::shared_ptr<stride::Population>& pop, const TransmissionProfile& transProfile, vector<util::RnHandler>& handlers)
 {
         auto& population = *pop;
 

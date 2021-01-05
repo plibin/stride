@@ -76,7 +76,7 @@ bool PublicHealthAgency::IsContactTracingActive(const std::shared_ptr<Calendar> 
 }
 
 
-void PublicHealthAgency::PerformContactTracing(std::shared_ptr<Population> pop, ContactHandler& cHandler,
+void PublicHealthAgency::PerformContactTracing(std::shared_ptr<Population> pop, RnHandler& rnHandler,
 												const std::shared_ptr<Calendar> calendar)
 {
 
@@ -92,7 +92,7 @@ void PublicHealthAgency::PerformContactTracing(std::shared_ptr<Population> pop, 
 	for (auto& p_case : *pop) {
 
 		if(p_case.GetHealth().NumberDaysInfected(1) &&
-				cHandler() < m_detection_probability) {
+				rnHandler.Binomial(m_detection_probability)) {
 			p_case.SetTracingIndexCase();
 		}
 
@@ -105,7 +105,7 @@ void PublicHealthAgency::PerformContactTracing(std::shared_ptr<Population> pop, 
 	for (auto& p_case : *pop) {
 
 		if (p_case.IsTracingIndexCase() && p_case.GetHealth().NumberDaysSymptomatic(m_delay_isolation_index)	) {
-        Trace(p_case, pop, cHandler, calendar);  
+        Trace(p_case, pop, rnHandler, calendar);
 
         // update index case counter, and terminate if quota is reached
         num_index_cases++;
@@ -119,7 +119,7 @@ void PublicHealthAgency::PerformContactTracing(std::shared_ptr<Population> pop, 
 //TODO: rename IsolateAndTrace()
 void PublicHealthAgency::Trace(Person& p_case, 
         std::shared_ptr<Population> pop, 
-        ContactHandler& cHandler,
+		RnHandler& rnHandler,
         const std::shared_ptr<Calendar> calendar)
 {
 	auto& logger       = pop->RefEventLogger();
@@ -176,7 +176,7 @@ void PublicHealthAgency::Trace(Person& p_case,
 					poolTypeString    = "Workplace";
 				}
 
-				if(cHandler() < tracing_efficiency){
+				if(rnHandler.Binomial(tracing_efficiency)){
 
 					if(p_contact->GetHealth().IsInfected()){
 						// start isolation over X days

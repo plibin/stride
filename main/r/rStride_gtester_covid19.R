@@ -210,8 +210,9 @@ exp_design$rng_seed[grepl('covid_fitting',exp_design$gtester_label)] <- exp_desi
 #exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_suscept','covid_suscept_adapt'),]
 #exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_fitting_base','covid_fitting_adapt'),]
 #exp_design <- exp_design[exp_design$gtester_label %in% c('covid_base','covid_transm','covid_transm_gamma'),]
-# exp_design <- exp_design[!grepl('_fitting',exp_design$gtester_label) &
-#                            !grepl('_fitting',exp_design$gtester_label),]
+# exp_design <- exp_design[grepl('_base',exp_design$gtester_label) |
+#                            grepl('_transm',exp_design$gtester_label) |
+#                            grepl('_fitting',exp_design$gtester_label),]
 
 
 table(exp_design$gtester_label)
@@ -370,9 +371,9 @@ if(!setequal(project_summary,ref_project_summary)){
   smd_print("SUMMARY OK")
 }
 
-
 ## COMPARE INCIDENCE ----
-if(setequal(data_incidence, ref_data_incidence)){
+if(setequal(data_incidence[,names(data_incidence) != 'exp_id'], 
+            ref_data_incidence[,names(ref_data_incidence) != 'exp_id'])){
   smd_print("INCIDENCE OK")
 } else{
   
@@ -411,9 +412,9 @@ if(setequal(data_incidence, ref_data_incidence)){
   }
 }
 
-
 ## COMPARE PREVALENCE ----
-if(setequal(data_prevalence,ref_data_prevalence)){ 
+if(setequal(data_prevalence[,names(data_prevalence) != 'exp_id'],
+            ref_data_prevalence[,names(ref_data_prevalence) != 'exp_id'])){ 
   smd_print("PREVALENCE OK")
 } else{
   smd_print("PREVALENCE CHANGED",WARNING = T)

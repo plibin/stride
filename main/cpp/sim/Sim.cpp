@@ -34,12 +34,12 @@
 namespace stride {
 
 using namespace std;
-using namespace util;
+using namespace stride::util;
 using namespace EventLogMode;
 
 Sim::Sim()
     : m_config(), m_event_log_mode(Id::None), m_num_threads(1U), m_track_index_case(false),
-      m_calendar(nullptr), m_contact_profiles(), m_handlers(), m_infector_default(),m_infector_tracing(),
+      m_calendar(nullptr), m_contact_profiles(), m_rn_handlers(), m_infector_default(),m_infector_tracing(),
       m_population(nullptr), m_rn_man(), m_transmission_profile(), m_cnt_reduction_workplace(0), m_cnt_reduction_other(0),
 	  m_cnt_reduction_workplace_exit(0),m_cnt_reduction_other_exit(0), m_cnt_reduction_school_exit(0), m_cnt_reduction_intergeneration(0),
 	  m_cnt_reduction_intergeneration_cutoff(0), m_compliance_delay_workplace(0), m_compliance_delay_other(0),
@@ -163,16 +163,16 @@ void Sim::TimeStep()
 				population[i].Update(isRegularWeekday, isK12SchoolOff, isCollegeOff,
 						isWorkplaceDistancingEnforced, isHouseholdClusteringAllowed,
 						m_is_isolated_from_household,
-                        m_handlers[thread_num], 
+                        m_rn_handlers[thread_num], 
                         m_calendar);
 			}
         }// end pragma openMP
 
 		 // Perform contact tracing (if activated)
-		 m_public_health_agency.PerformContactTracing(m_population, m_handlers[0], m_calendar);
+		 m_public_health_agency.PerformContactTracing(m_population, m_rn_handlers[0], m_calendar);
 
 		 // Perform universal testing 
-	     m_universal_testing.PerformUniversalTesting(m_population, m_handlers[0], m_calendar,m_public_health_agency);
+	     m_universal_testing.PerformUniversalTesting(m_population, m_rn_handlers[0], m_calendar,m_public_health_agency);
 
 #pragma omp parallel num_threads(m_num_threads)
         {
@@ -189,7 +189,7 @@ void Sim::TimeStep()
 #pragma omp for schedule(static)
 					for (size_t i = 1; i < poolSys.RefPools(typ).size(); i++) { // NOLINT
 							infector(poolSys.RefPools(typ)[i], m_contact_profiles[typ], m_transmission_profile,
-									 m_handlers[thread_num], simDay, eventLogger,
+									 m_rn_handlers[thread_num], simDay, eventLogger,
 									 workplace_distancing_factor,
 									 community_distancing_factor,
 									 school_distancing_factor,
