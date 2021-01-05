@@ -94,6 +94,9 @@ if(!(exists('.rstride'))){
   # read the csv file
   project_summary          <- read.table(project_summary_filename,sep=',',header=T,stringsAsFactors = stringsAsFactors)
   
+  # set NA as character
+  project_summary[is.na(project_summary)] <- 'NA'
+  
   # return the data.frame
   return(project_summary)
 }
@@ -226,6 +229,10 @@ if(!(exists('.rstride'))){
 # note: integers are converted to a string with the transpose operation of a mixed matrix...
 # so, separate the comparison for numeric and non-numeric types
 .rstride$get_equal_rows <- function(f_matrix,f_vector){
+  
+  # convert NA into character
+  f_vector[is.na(f_vector)] <- 'NA'
+  f_matrix[is.na(f_matrix)] <- 'NA'
   
   # get numeric columns
   col_numeric      <- unlist(lapply(f_vector,is.numeric))

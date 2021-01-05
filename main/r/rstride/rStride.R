@@ -83,6 +83,11 @@ create_default_config <- function(config_default_filename, run_tag)
 
 save_config_xml <- function(config_exp, xml_filename)
 {
+  
+  # remove NA's
+  config_exp[is.na(config_exp)] <- NULL
+  
+  # save as xml
   .rstride$save_config_xml(config_exp,'run',xml_filename)
 }
 
@@ -230,7 +235,7 @@ run_rStride <- function(exp_design               = exp_design,
                 get_tracing_rdata        = FALSE,
                 bool_transmission_all    = TRUE,
                 num_parallel_workers     = NA))
-    run_tag <- basename(project_dir)
+    #run_tag <- basename(project_dir)
   }
   
   # command line message
