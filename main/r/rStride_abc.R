@@ -49,8 +49,8 @@ source('./bin/rStride_intervention_baseline.R')
 library(EasyABC)
 
 # set samples and cluster size
-n_sample = 24
 n_cluster = 8
+n_sample = n_cluster*2
 
 # set acceptance level
 pacc=0.5
@@ -119,8 +119,11 @@ run_file_path <- dirname(smd_file_path('./sim_output',run_tag_data,'test'))
 setwd(run_file_path)
 saveRDS(model_param_update,'model_param_update.rds')
 saveRDS(sum_stat_obs,'sum_stat_obs.rds')
+saveRDS(stride_prior,'stride_prior.rds')
 
-# stride_out <- run_rStride_abc(c(20,4,400,0.4,0.85,7.4,0.85,4.51))
+# run_param <- c(rng_seed=20,4,400,0.4,0.85,7.4,0.85,4.51)
+# names(run_param)[-1] <- names(stride_prior)
+# stride_out <- run_rStride_abc(run_param)
 # length(stride_out)
 # dim(sum_stat_obs)
 

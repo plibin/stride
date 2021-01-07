@@ -83,15 +83,26 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
     // Check if age-dependent susceptibility vector is available
     // Otherwise, susceptibility adjustment factor for all ages is 1.
     boost::optional<std::string> susceptibility_by_age_as_input = configPt.get_optional<std::string>("run.disease_susceptibility_age");
-    if (susceptibility_by_age_as_input) {
+    boost::optional<std::string> susceptibility_agecat_as_input = configPt.get_optional<std::string>("run.disease_susceptibility_agecat");
+    if (susceptibility_by_age_as_input && susceptibility_agecat_as_input) {
+
     		auto susceptibility_string = Split(*susceptibility_by_age_as_input, ",");
-    		for (unsigned int index_age = 0; index_age < m_susceptibility_age.size(); index_age++) {
-    			if (index_age < susceptibility_string.size()) {
-    				m_susceptibility_age[index_age] = stod(susceptibility_string[index_age]);
-    			} else {
-    				// re-use last value
-    				m_susceptibility_age[index_age] = stod(susceptibility_string[susceptibility_string.size()-1]);
-    			}
+    		auto agecat_string = Split(*susceptibility_agecat_as_input, ",");
+
+    		for (unsigned int index_agecat = 0; index_agecat < agecat_string.size(); index_agecat++) {
+    			auto age_min = stod(agecat_string[index_agecat]);
+    			auto age_max = (index_agecat == agecat_string.size()-1) ?
+									m_susceptibility_age.size() :
+									stod(agecat_string[index_agecat+1]) ;
+
+ 				for (unsigned int index_age = age_min; index_age < age_max; index_age++) {
+					if (index_age < susceptibility_string.size()) {
+						m_susceptibility_age[index_age] = stod(susceptibility_string[index_agecat]);
+					} else {
+						// re-use last value
+						m_susceptibility_age[index_age] = stod(susceptibility_string[susceptibility_string.size()-1]);
+					}
+				}
     		}
     } else {
     		for (unsigned int index_age = 0; index_age < m_susceptibility_age.size(); index_age++) {

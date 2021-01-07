@@ -36,7 +36,8 @@ run_rStride_abc <- function(abc_function_param,
 
   # add process-id-specific delay 
   # note: to prevent multiple project-dirs when starting many parallel processes
-  Sys.sleep(log(rng_seed,10))
+  # note: "+1" to prevent "-Inf"
+  Sys.sleep(unlist(log(rng_seed+1,10)))
 
   wd_start <- getwd()
   run_tag <- basename(getwd())
@@ -60,26 +61,32 @@ run_rStride_abc <- function(abc_function_param,
   # create project directory
   project_dir <- smd_file_path(output_dir,run_tag)
 
+  
+  ################################## #
+  ## CONFIGURATION                 ####
+  ################################## #
+  
   # get default config
   config_exp <- create_default_config(config_default_filename, run_tag)
   
-  # add default parameters and values to combine in a full-factorial grid
+  # incorportate experiment-specific parameter values
   model_param_update <- readRDS(file.path('./sim_output',run_tag,'model_param_update.rds'))
-
-  # add design parameters
   config_exp[names(model_param_update)] <- model_param_update
  
-  # use given parameters
-  config_exp$rng_seed                    <- rng_seed
-  config_exp$r0                          <- abc_function_param[2]
-  config_exp$num_infected_seeds          <- abc_function_param[3]
-  config_exp$hosp_probability_factor     <- abc_function_param[4]
-  config_exp$cnt_reduction_workplace     <- abc_function_param[5]
-  config_exp$compliance_delay_workplace  <- abc_function_param[6]
-  config_exp$cnt_reduction_other         <- abc_function_param[7]
-  config_exp$compliance_delay_other      <- abc_function_param[8]
+  # check/adjust parameter names
+  if(is.null(names(abc_function_param))){
+     names(abc_function_param) <- c('rng_seed',names(readRDS(file.path('./sim_output',run_tag,'stride_prior.rds'))))
+  }
+
+  # aggregate age-specific parameters
+  abc_param_aggr <- collapse_age_param(abc_function_param)
+
+  # copy parameter values
+   for(i_param in names(abc_param_aggr)){
+      config_exp[i_param]  <- abc_param_aggr[i_param]
+   }
   
-  # some input parameters need to be an integer value
+  # make sure some input parameters are coded as integer value
   config_exp$num_infected_seeds         <- round(config_exp$num_infected_seeds )
   config_exp$compliance_delay_workplace <- round(config_exp$compliance_delay_workplace)
   config_exp$compliance_delay_other     <- round(config_exp$compliance_delay_other)
@@ -418,6 +425,9 @@ get_abc_reference_data <- function(ref_period ,
    # temporary fix for 80-90 year olds
    prevalence_ref <- prevalence_ref[prevalence_ref$age_min!=90,]
    
+   # set "level" as factor
+   prevalence_ref$level <- as.factor(prevalence_ref$level)
+   
    abc_sero_stat     <- data.table(value      = prevalence_ref$point_incidence_mean,
                                    value_low  = prevalence_ref$point_incidence_low,
                                    value_high = prevalence_ref$point_incidence_high,
@@ -471,20 +481,74 @@ get_abc_reference_data <- function(ref_period ,
    
    return(sum_stat_obs)
    
-   
-   
-   nrow(abc_hosp_stat) / nrow(abc_sero_stat)
-   
-   sero_rep_factor   <- floor(nrow(abc_hosp_stat) / nrow(abc_sero_stat))
-   sum_stat_obs      <- rbind(abc_hosp_stat,abc_sero_stat)
-   sum_stat_obs['bool_orig'] <- TRUE
-   for(i in 2:sero_rep_factor){
-      sum_stat_obs <- rbind(sum_stat_obs,
-                            cbind(abc_sero_stat,
-                                  bool_orig = FALSE))
-   }
-   
-   return(sum_stat_obs)
+   # nrow(abc_hosp_stat) / nrow(abc_sero_stat)
+   # 
+   # sero_rep_factor   <- floor(nrow(abc_hosp_stat) / nrow(abc_sero_stat))
+   # sum_stat_obs      <- rbind(abc_hosp_stat,abc_sero_stat)
+   # sum_stat_obs['bool_orig'] <- TRUE
+   # for(i in 2:sero_rep_factor){
+   #    sum_stat_obs <- rbind(sum_stat_obs,
+   #                          cbind(abc_sero_stat,
+   #                                bool_orig = FALSE))
+   # }
    
 }
+
+
+# get a sample from the given ABC parameter prior list
+# development function to run the ABC procedure
+sample_param_from_prior <- function(stride_prior){
+   
+   param_names_all <- names(stride_prior)
+   
+   # start with general parameters (not age-specific)
+   param_value_out <- data.frame(matrix(0,ncol=length(param_names_all)+1))
+   names(param_value_out) <- c('rng_seed',param_names_all)
+   
+   param_value_out$rng_seed <- 100
+   
+   # add mean for other parameters
+   for(i_param in param_names_all){
+      param_value_out[i_param] <- mean(as.numeric(stride_prior[[i_param]][-1]))
+   }
+   
+   # return result
+   return(param_value_out)
+}
+
+
+# development function to run the ABC procedure
+# param_list <- abc_function_param
+collapse_age_param <- function(param_list){
+
+   param_names_all <- names(param_list)
+
+   # start with general parameters (not age-specific)
+   param_general  <- param_names_all[!grepl('_opt',param_names_all)]
+   param_list_out <- param_list[param_general]
+   param_list_out <- as.list(param_list_out)
+   cat('****',file = 'function_out.txt',append = T,fill = T)
+   cat(typeof(param_list),file = 'function_out.txt',append = T,fill = T)
+   cat(typeof(param_list_out),file = 'function_out.txt',append = T,fill = T)
+   cat(length(param_list_out),file = 'function_out.txt',append = T,fill = T)
+   cat('****',file = 'function_out.txt',append = T,fill = T)
+   
+   
+   # age specific parameters
+   param_age <- param_names_all[!param_names_all %in% param_general]
+   param_age_main  <- gsub('_opt.','',param_age)
+   param_age_level <- gsub('.*_opt','',param_age)
+
+   for(i_param in unique(param_age_main)){
+      age_values <- NULL
+      for(i_param_age in param_age[param_age_main == i_param]){
+         age_values <- c(age_values,param_list[i_param_age])
+      }
+      param_list_out[i_param] <- paste(age_values,collapse=',')
+   }
+
+   return(param_list_out)
+}
+
+
 

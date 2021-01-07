@@ -79,6 +79,7 @@ exp_design <- expand.grid(r0                            = 2.5,
                           hospital_mean_delay_age       = paste(3,7,7,6,sep=','),
                           
                           disease_susceptibility_age      = NA,
+                          disease_susceptibility_agecat   = NA,
                           transmission_probability_distribution = NA,
                           transmission_probability_distribution_overdispersion = NA,
 
@@ -145,12 +146,14 @@ exp_design_cts_all$gtester_label            <- 'covid_tracing_all'
 exp_design_susceptible <- exp_design
 exp_design_susceptible$gtester_label            <- 'covid_suscept'
 tmp_susceptible  <- rep(1,100)
+exp_design_susceptible$disease_susceptibility_agecat <- paste(0:99,collapse=',')
 exp_design_susceptible$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
 
 # age-specific susceptibility: adapted
 exp_design_susceptible_adapt <- exp_design
 exp_design_susceptible_adapt$gtester_label            <- 'covid_suscept_adapt'
 tmp_susceptible[-seq(1,91,9)] <- 0.90
+exp_design_susceptible_adapt$disease_susceptibility_agecat <- paste(0:99,collapse=',')
 exp_design_susceptible_adapt$disease_susceptibility_age <- paste(tmp_susceptible,collapse=',')
 
 # individual-based transmission: baseline ----
@@ -173,6 +176,7 @@ exp_design_fitting$gtester_label            <- 'covid_fitting'
 b0 <- 0.14743616688954;  b1 <- 43.9598287259418              # from: disease_covid19_age  
 tmp_transmission <- rep(unique(exp_design_fitting$r0 - b0) / b1,100)
 exp_design_fitting$disease_susceptibility_age <- paste(tmp_transmission,collapse=',')
+exp_design_fitting$disease_susceptibility_agecat <- paste(0:99,collapse=',')
 # exp_design_fitting$r0 = (1-b0)/b1
 exp_design_fitting$transmission_probability = 1
 
@@ -236,7 +240,16 @@ setwd(project_dir)
 saveRDS(model_param_abc,'model_param_update.rds')
 
 # run rStride_abc
-rstride_out_abc <- run_rStride_abc(c(100,3,400,0.4,0.85,7.4,0.85,4.51))
+rstride_out_abc <- run_rStride_abc(c(rng_seed = 100, 
+                                     r0 = 3, 
+                                     num_infected_seeds= 400, 
+                                     hosp_probability_factor=0.4,
+                                     cnt_reduction_workplace=0.85,
+                                     compliance_delay_workplace=7.4,
+                                     cnt_reduction_other=0.85,
+                                     compliance_delay_other=4.51
+                                     )
+                                   )
 
 # restore workdir
 setwd('../..')
@@ -425,7 +438,7 @@ if(setequal(data_prevalence[,names(data_prevalence) != 'exp_id'],
 
 ## COMPARE ABC ----
 ref_rstride_out_abc <- readRDS(file='tests/regression_rstride_out_abc.rds')
-if(setequal(rstride_out_abc,rstride_out_abc)){
+if(setequal(rstride_out_abc,ref_rstride_out_abc)){
   smd_print("rSTRIDE ABC OK")
 } else{
   

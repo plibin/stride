@@ -31,6 +31,10 @@ if(length(args)>0){
   job_id <-''
 }
 
+# lw's developing option
+if(any(grepl('lwillem',dir('~',full.names=T)))){
+  .rstride$set_wd()
+}
 
 # Clear work environment
 rm(list=ls()[ls() != 'job_id'])
@@ -46,10 +50,10 @@ library(EasyABC)
 
 # set samples and cluster size
 n_cluster = 8
-n_sample = n_cluster * 3 #24
+n_sample = n_cluster * 4 #24
 
 # set acceptance level
-pacc=0.8
+pacc=0.7
 
 # set directory postfix (optional)
 dir_postfix <- paste0('_abc_age_n',n_sample,'_c',n_cluster,'_p',formatC(pacc*100,flag = 0,digits = 2))
@@ -76,7 +80,6 @@ model_param_update <- get_exp_param_default(bool_revised_model_param = T,
 #model_param_update$population_file <- "pop_belgium600k_c500_teachers_censushh.csv"
 model_param_update$num_days        <- 74
 #model_param_update$logparsing_cases_upperlimit <- 2.5e6
-model_param_update$hospital_category_age <- "0,10,20,30,40,50,60,70,80,90"
 
 ref_period <- seq(as.Date('2020-03-15'),
                   as.Date(model_param_update$start_date) + model_param_update$num_days-1,
@@ -96,51 +99,42 @@ sum_stat_obs <- get_abc_reference_data(ref_period,
 ################################## #
 
 # set priors
-stride_prior <- list(r0                         = c("unif",3.0,4.0),
+stride_prior <- list(#r0                         = c("unif",3.0,4.0),
                      num_infected_seeds         = c("unif",200,300),
-                     hosp_probability_factor    = c("unif",0.3,0.5),
+                     #hosp_probability_factor    = c("unif",0.3,0.5),
                      cnt_reduction_workplace    = c("unif",0.70,0.85),
                      compliance_delay_workplace = c("unif",4.51,7.49),  # rounded: 5-7
                      cnt_reduction_other        = c("unif",0.70,0.85),
                      compliance_delay_other     = c("unif",4.51,7.49))  # rounded: 5-7
 
-# p_trans_min <- 0.07;p_trans_max <- 0.09
-# stride_prior <- list(#r0                         = c("unif",1.0,5.0),    
-#                      num_infected_seeds         = c("unif",200,300),
-#                      #hosp_probability_factor    = c("unif",0.05,0.95),
-#                      cnt_reduction_workplace    = c("unif",0.60,0.95),
-#                      compliance_delay_workplace = c("unif",4.51,7.49),  # rounded: 5-7
-#                      cnt_reduction_other        = c("unif",0.60,0.95),
-#                      compliance_delay_other     = c("unif",4.51,7.49))  # rounded: 5-7
-# 
-# i_age <- 2
-# for(i_age in 1:10){
-#   stride_prior[[paste0('transm_age_',i_age)]] <- c("unif",0.07,0.09) # 0.0831236
-#   stride_prior[[paste0('hosp_age_',i_age)]]   <- c("unif",0.1,0.8)   # various levels  
-# }
-# length(stride_prior)
-
-
-## for debugging
-#.rstride$set_wd()                    
+#model_param_update$hospital_category_age <- "0,10,20,30,40,50,60,70,80"
+ model_param_update$disease_susceptibility_agecat <- model_param_update$hospital_category_age
+ model_param_update$transmission_probability <- 1
+for(i_age in 1:9){
+  stride_prior[[paste0('disease_susceptibility_age_opt',i_age)]] <- c("unif",0.07,0.09) # 0.0831236
+  stride_prior[[paste0('hospital_probability_age_opt',i_age)]]   <- c("unif",0.1,0.8)   # various levels
+}
+length(stride_prior)
 
 # create output folder and set workdir
 run_file_path <- dirname(smd_file_path('./sim_output',run_tag_data,'test'))
 setwd(run_file_path)
 saveRDS(model_param_update,'model_param_update.rds')
 saveRDS(sum_stat_obs,'sum_stat_obs.rds')
+saveRDS(stride_prior,'stride_prior.rds')
 
- # stride_out <- run_rStride_abc(c(20,4,400,0.4,0.85,7.4,0.85,4.51))
- # length(stride_out)
- # dim(sum_stat_obs)
-
-# p = 0.2
+# run_param  <- sample_param_from_prior(stride_prior)
+# stride_out <- run_rStride_abc(run_param)
+# length(stride_out)
+# dim(sum_stat_obs)
+# 
+# p = 0.5
 # ABC_stride<-ABC_rejection(model     = run_rStride_abc,
 #                            prior    = stride_prior,
 #                            nb_simul = n_sample,
 #                            summary_stat_target=sum_stat_obs$value,
 #                            tol=p,
-#                            verbose = T,
+#                            verbose = F,
 #                            n_cluster=n_cluster,
 #                            use_seed=TRUE,
 #                            progress_bar=T)
