@@ -23,6 +23,7 @@
 #' Main rStride function for ABC
 # abc_function_param <- c(15,3.4,256,0.4,0.85,7.4,0.85,4.51)
 #abc_function_param <- c(41,4,400,0.4,0.85,7.4,0.85,4.51)
+# abc_function_param <- run_param; remove_run_output <- FALSE
 
 ################################################ #
 ## RUN  ----
@@ -538,7 +539,10 @@ sample_param_from_prior <- function(stride_prior){
    
    # add mean for other parameters
    for(i_param in param_names_all){
-      param_value_out[i_param] <- mean(as.numeric(stride_prior[[i_param]][-1]))
+      x_range <- as.numeric(stride_prior[[i_param]][-1])
+      x_min <- x_range[1]
+      x_max <- x_range[2]
+      param_value_out[i_param] <- round(runif(1,x_min,x_max),digits=2)
    }
    
    # return result

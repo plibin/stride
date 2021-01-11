@@ -86,7 +86,7 @@ parse_event_logfile <- function(event_logfile,exp_id,
   header_transm       <- c('local_id', 'infector_id','part_age',
                            'infector_age','pool_type','sim_day','id_index_case',
                            'start_infectiousness','end_infectiousness','start_symptoms','end_symptoms',
-                           'infector_is_symptomatic','individual_transm_prob')
+                           'infector_is_symptomatic','part_rel_infectiousness','part_rel_susceptibility')
   } else {
     header_transm       <- c(NA, #'local_id',
                              NA, #'infector_id',
@@ -100,7 +100,8 @@ parse_event_logfile <- function(event_logfile,exp_id,
                              'start_symptoms',
                              'end_symptoms',
                              NA, #'infector_is_symptomatic',
-                             NA  #'individual_transm_prob'
+                             NA, #'individual_transm_prob',
+                             NA  #'part_susceptibility'
                             )
   }
   

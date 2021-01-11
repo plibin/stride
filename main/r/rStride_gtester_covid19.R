@@ -180,12 +180,19 @@ exp_design_fitting$disease_susceptibility_agecat <- paste(0:99,collapse=',')
 # exp_design_fitting$r0 = (1-b0)/b1
 exp_design_fitting$transmission_probability = 1
 
-# fitting transmission and susceptibility: baseline
+# fitting transmission and susceptibility: modified
 exp_design_fitting_adapt <- exp_design_fitting
 exp_design_fitting_adapt$gtester_label            <- 'covid_fitting_adapt'
 tmp_transmission[seq(0,18,1)]  <- 0.02
 tmp_transmission[seq(60,70,1)] <- 0.08
 exp_design_fitting_adapt$disease_susceptibility_age <- paste(tmp_transmission,collapse=',')
+
+# fitting transmission and susceptibility: modified
+exp_design_fitting_agegroup <- exp_design_fitting
+exp_design_fitting_agegroup$gtester_label            <- 'covid_fitting_agegroup'
+t_base <- unique(exp_design_fitting$r0 - b0) / b1
+exp_design_fitting_agegroup$disease_susceptibility_age <- paste(c(0.02,t_base,0.08,t_base),collapse=',')
+exp_design_fitting_agegroup$disease_susceptibility_agecat <- c('0,18,59,70')
 
 
 # rbind all designs
@@ -195,7 +202,8 @@ exp_design <- rbind(exp_design, exp_design_all,
                     exp_design_15min, exp_design_hhcl,
                     exp_design_susceptible,exp_design_susceptible_adapt,
                     exp_design_transm,exp_design_transm_adapt,
-                    exp_design_fitting,exp_design_fitting_adapt)
+                    exp_design_fitting,exp_design_fitting_adapt,
+                    exp_design_fitting_agegroup)
 
 
 # add a unique seed for each run

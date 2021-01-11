@@ -89,6 +89,10 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
     		auto susceptibility_string = Split(*susceptibility_by_age_as_input, ",");
     		auto agecat_string = Split(*susceptibility_agecat_as_input, ",");
 
+    		if(susceptibility_string.size() != agecat_string.size()){
+    			throw runtime_error("TransmissionProfile::Initialize> Illegal input values for susceptibility_agecat: should be open ended with size susceptibility_age.size() ");
+    		}
+
     		for (unsigned int index_agecat = 0; index_agecat < agecat_string.size(); index_agecat++) {
     			auto age_min = stod(agecat_string[index_agecat]);
     			auto age_max = (index_agecat == agecat_string.size()-1) ?
@@ -96,12 +100,7 @@ void TransmissionProfile::Initialize(const ptree& configPt, const ptree& disease
 									stod(agecat_string[index_agecat+1]) ;
 
  				for (unsigned int index_age = age_min; index_age < age_max; index_age++) {
-					if (index_age < susceptibility_string.size()) {
 						m_susceptibility_age[index_age] = stod(susceptibility_string[index_agecat]);
-					} else {
-						// re-use last value
-						m_susceptibility_age[index_age] = stod(susceptibility_string[susceptibility_string.size()-1]);
-					}
 				}
     		}
     } else {
