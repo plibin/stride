@@ -219,6 +219,10 @@ run_rStride_abc <- function(abc_function_param,
 # function to plot the ABC results: parameters & summary statistics (over time)
 plot_abc_results <- function(ABC_out,project_dir,bool_pdf=TRUE){
    
+   # model parameters
+   stride_prior       <- readRDS(dir(project_dir,pattern = 'stride_prior',full.names = T))
+   sum_stat_obs       <- readRDS(dir(project_dir,pattern = 'sum_stat_obs',full.names = T))
+
    # open pdf stream
    if(bool_pdf) .rstride$create_pdf(project_dir = project_dir,file_name = 'results_ABC')
    
@@ -311,13 +315,15 @@ plot_abc_results <- function(ABC_out,project_dir,bool_pdf=TRUE){
 }
 
 
-plot_abc_intermediate <- function(ABC_out,project_dir){
+plot_abc_intermediate <- function(ABC_out,project_dir,bool_pdf=TRUE){
    
    # if intermediate results present ==>> plot
    if( 'intermediary' %in% names(ABC_out)){
    
+      stride_prior       <- readRDS(dir(project_dir,pattern = 'stride_prior',full.names = T))
+
       # open pdf stream
-      .rstride$create_pdf(project_dir = project_dir,file_name = 'results_ABC_intermediate')
+      if(bool_pdf){ .rstride$create_pdf(project_dir = project_dir,file_name = 'results_ABC_intermediate') }
       
       for(i_seq in 1:length(ABC_out$intermediary)){
          par(mfrow=c(3,2))
@@ -328,49 +334,63 @@ plot_abc_intermediate <- function(ABC_out,project_dir){
          plot_abc_results(ABC_out_temp,project_dir,bool_pdf = FALSE)
       }
       
-      dev.off()
+      if(bool_pdf) dev.off()
+   }
+}
+
+plot_abc_posterior <- function(ABC_out,project_dir,bool_pdf=TRUE){
+   
+   # if intermediate results present ==>> plot
+   if( 'intermediary' %in% names(ABC_out)){
       
+      stride_prior       <- readRDS(dir(project_dir,pattern = 'stride_prior',full.names = T))
+
+      ## open pdf steam
+      if(bool_pdf) .rstride$create_pdf(project_dir = project_dir,file_name = 'results_ABC_posterior')
       
-      ## check progress
-      .rstride$create_pdf(project_dir = project_dir,file_name = 'results_ABC_posterior')
       get_stat <- function(x){
          c(min(x),mean(x),max(x))
       }
       
-      foreach(i = 1:length(ABC_out$intermediary),
+      param_num   <- length(stride_prior) 
+      param_names <- names(stride_prior)
+      
+      foreach(i_iter = 1:length(ABC_out$intermediary),
               .combine = 'rbind') %do% {
                  
-                 c(iter = i,
-                   n_simul_tot = ABC_out$intermediary[[i]]$n_simul_tot,
-                   tol_step = ABC_out$intermediary[[i]]$tol_step,
-                   param1_ = get_stat(ABC_out$intermediary[[i]]$posterior[,2]),
-                   param2_ = get_stat(ABC_out$intermediary[[i]]$posterior[,3]),
-                   param3_ = get_stat(ABC_out$intermediary[[i]]$posterior[,4]),
-                   param4_ = get_stat(ABC_out$intermediary[[i]]$posterior[,5]),
-                   param5_ = get_stat(ABC_out$intermediary[[i]]$posterior[,6]),
-                   param6_ = get_stat(ABC_out$intermediary[[i]]$posterior[,7]),
-                   param7_ = get_stat(ABC_out$intermediary[[i]]$posterior[,8])
-                 )
+                 foreach(i_param = 1:length(param_names),
+                         .combine = 'cbind') %do% {
+                            get_stat(ABC_out$intermediary[[i_iter]]$posterior[,i_param+1])
+                  } -> p_out
+                 colnames(p_out) <- param_names
+                 p_out <- as.double(p_out)
+                 names(p_out) <- paste0(rep(param_names,each=3),'_',rep(1:3,param_num))
                  
+                 c(iter = i_iter,
+                   n_simul_tot = ABC_out$intermediary[[i_iter]]$n_simul_tot,
+                   tol_step = ABC_out$intermediary[[i_iter]]$tol_step,
+                  p_out)
               } -> db_abc
+      db_abc <- data.frame(db_abc)
       
+      if(ncol(db_abc)==1){
+         db_abc <- data.frame(t(db_abc)) 
+      }
       
       par(mfrow=c(3,3))
-      db_abc <- data.frame(db_abc)
       plot(db_abc$iter,(db_abc$n_simul_tot),main='num simulations')
       plot(db_abc$iter,log(db_abc$tol_step),main='log(tolerance)')
       
-      
       for(i in 1:length(stride_prior)){
-         tmp_out <- db_abc[,paste0('param',i,'_',1:3)]
-         plot(db_abc$iter,tmp_out[,2],type='l',
+         tmp_out <- db_abc[,paste0(param_names[i],'_',1:3)]
+         plot(db_abc$iter,tmp_out[,2],type='b',
               ylim=range(tmp_out),main=names(stride_prior)[i],ylab=names(stride_prior)[i])
          lines(db_abc$iter,tmp_out[,1],lty=2)
          lines(db_abc$iter,tmp_out[,3],lty=2)
       }
       
       # close pdf stream
-      dev.off()
+      if(bool_pdf) dev.off()
    }
 }
 
@@ -558,6 +578,123 @@ collapse_age_param <- function(param_list){
 
    return(param_list_out)
 }
+
+################################################ #
+## LOAD PARTIAL RESULTS  ----
+################################################ #
+
+load_partial_results_abc <- function(project_dir){
+   
+   # model parameters
+   stride_prior       <- readRDS(dir(project_dir,pattern = 'stride_prior',full.names = T))
+   sum_stat_obs       <- readRDS(dir(project_dir,pattern = 'sum_stat_obs',full.names = T))
+   model_param_update <- readRDS(dir(project_dir,pattern = 'model_param_update',full.names = T))
+
+   length(stride_prior)
+   dim(sum_stat_obs)
+   length(model_param_update)
+   
+   # set column names
+   col_names    <- c('step_id','tab_weight',names(stride_prior),sum_stat_obs$category)
+   param_names  <- names(stride_prior)
+   output_names <- sum_stat_obs$category
+   
+   # model step
+   model_step_files <- dir(project_dir,pattern = 'model_step',full.names = T)
+   foreach(i_file = 1:length(model_step_files),
+           .combine = 'rbind') %do%{
+              step_id <- unlist(strsplit(model_step_files[i_file],'model_step'))[2]
+              data.frame(step_id,read.table(model_step_files[i_file],sep=' '))
+   } -> model_step
+   dim(model_step)  
+   names(model_step) <- col_names
+   
+   # output_step
+   output_step_files <- dir(project_dir,pattern = 'output_step',full.names = T)
+   foreach(i_file = 1:length(output_step_files),
+           .combine = 'rbind') %do%{
+              step_id <- unlist(strsplit(output_step_files[i_file],'output_step'))[2]
+              data.frame(step_id,read.table(output_step_files[i_file],sep=' '))
+   } -> output_step
+   dim(output_step) 
+   names(output_step) <- col_names
+   
+   # n_simul_tot_step
+   n_simul_tot_step_files <- dir(project_dir,pattern = 'n_simul_tot_step',full.names = T)
+   foreach(i_file = 1:length(n_simul_tot_step_files),
+           .combine = 'rbind') %do%{
+              step_id <- unlist(strsplit(n_simul_tot_step_files[i_file],'n_simul_tot_step'))[2]
+              data.frame(step_id,read.table(n_simul_tot_step_files[i_file],sep=' '))
+           } -> n_simul_tot_step
+   dim(n_simul_tot_step) 
+   names(n_simul_tot_step) <- c('step_id','n_simul_tot_step')
+   
+   # tolerance_step
+   tolerance_step_files <- dir(project_dir,pattern = 'tolerance_step',full.names = T)
+   foreach(i_file = 1:length(n_simul_tot_step_files),
+           .combine = 'rbind') %do%{
+              step_id <- unlist(strsplit(tolerance_step_files[i_file],'tolerance_step'))[2]
+              data.frame(step_id,read.table(tolerance_step_files[i_file],sep=' '))
+           } -> tolerance_step
+   dim(tolerance_step) 
+   names(tolerance_step) <- c('step_id','tolerance_step')
+   
+   # p_acc
+   p_acc_step_files <- dir(project_dir,pattern = 'p_acc_step',full.names = T)
+   if(length(p_acc_step_files)>0){
+      foreach(i_file = 1:length(p_acc_step_files),
+              .combine = 'rbind') %do%{
+                 step_id <- unlist(strsplit(p_acc_step_files[i_file],'p_acc_step'))[2]
+                 data.frame(step_id,read.table(p_acc_step_files[i_file],sep=' '))
+              } -> p_acc_step
+      dim(p_acc_step) 
+      names(p_acc_step) <- c('step_id','p_acc_step')
+   } else{
+      p_acc_step <- data.frame(step_id=1,
+                               p_acc_step = NA)
+   }
+   
+   # compute time?
+   all_file_info <- file.info(dir(project_dir,full.names = T))
+   computime <- round(as.numeric(difftime(max(all_file_info$mtime),min(all_file_info$mtime),units='secs')))
+   
+   
+   # reformat: ABC_out$param & ABC_out$stats
+   model_step      <- list2double(model_step)
+   flag_final_step <- model_step[,'step_id'] == max(model_step[,'step_id'])
+   flag_output_col <- colnames(model_step) %in% sum_stat_obs$category
+
+   ABC_out    <- list(param = model_step[flag_final_step,param_names],
+                      stats = model_step[flag_final_step,flag_output_col],
+                      computime = computime,
+                      nsim = sum(n_simul_tot_step$n_simul_tot_step))
+   plot_abc_results(ABC_out,project_dir,bool_pdf = F)
+   
+   # reformat: ABC_out$intermediate
+   ABC_out$intermediary <- list(1:nrow(tolerance_step))
+   i_step <- 1
+   for(i_step in 1:max(output_step$step_id)){
+      posterior <- list2double(output_step[output_step$step_id == i_step,-1])
+      ABC_out$intermediary[[i_step]] <- list(n_simul_tot = as.numeric(n_simul_tot_step$n_simul_tot_step[n_simul_tot_step$step_id == i_step]),
+                                             tol_step = as.numeric(tolerance_step$tolerance_step[tolerance_step$step_id == i_step]),
+                                             p_acc_step = as.numeric(p_acc_step$p_acc_step[p_acc_step$step_id == i_step]),
+                                             posterior=posterior)
+   }
+   #plot_abc_intermediate(ABC_out,project_dir,bool_pdf = F)
+   
+   # return result
+   return(ABC_out)
+   
+}
+
+
+list2double <- function(x_list){
+   x_matrix <- as.matrix(x_list)
+   x_double <- matrix(as.double(as.matrix(x_matrix)),nrow=nrow(x_matrix),ncol=ncol(x_matrix))
+   colnames(x_double) <- names(x_list)
+   return(x_double)
+}
+
 
 
 
