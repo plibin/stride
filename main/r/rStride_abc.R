@@ -127,19 +127,17 @@ saveRDS(stride_prior,'stride_prior.rds')
 # length(stride_out)
 # dim(sum_stat_obs)
 
-# p = 0.2
 # ABC_stride<-ABC_rejection(model     = run_rStride_abc,
 #                            prior    = stride_prior,
 #                            nb_simul = n_sample,
 #                            summary_stat_target=sum_stat_obs$value,
-#                            tol=p,
+#                            tol=pacc,
 #                            verbose = T,
 #                            n_cluster=n_cluster,
 #                            use_seed=TRUE,
 #                            progress_bar=T)
 
 
-#pacc=0.5
 ABC_stride<-ABC_sequential(model=run_rStride_abc,
                            prior=stride_prior,
                            nb_simul=n_sample,

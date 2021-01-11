@@ -91,8 +91,9 @@ ref_period <- seq(as.Date('2020-03-15'),
 
 sum_stat_obs <- get_abc_reference_data(ref_period,
                                        bool_age = TRUE,
-                                       bool_doubling_time = FALSE)
-
+                                       bool_doubling_time = FALSE,
+                                       bool_hospital = TRUE)
+table(sum_stat_obs$category)
 
 ################################## #
 ## RUN ABC  ----
@@ -128,19 +129,16 @@ saveRDS(stride_prior,'stride_prior.rds')
 # length(stride_out)
 # dim(sum_stat_obs)
 # 
-# p = 0.5
 # ABC_stride<-ABC_rejection(model     = run_rStride_abc,
 #                            prior    = stride_prior,
 #                            nb_simul = n_sample,
 #                            summary_stat_target=sum_stat_obs$value,
-#                            tol=p,
+#                            tol=pacc,
 #                            verbose = F,
 #                            n_cluster=n_cluster,
 #                            use_seed=TRUE,
 #                            progress_bar=T)
-
-
-#pacc=0.5
+#
 ABC_stride<-ABC_sequential(model=run_rStride_abc,
                            prior=stride_prior,
                            nb_simul=n_sample,

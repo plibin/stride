@@ -389,7 +389,8 @@ plot_abc_correlation <- function(ABC_out,project_dir){
 
 get_abc_reference_data <- function(ref_period ,
                                    bool_age  = FALSE,
-                                   bool_doubling_time = TRUE){
+                                   bool_doubling_time = TRUE,
+                                   bool_hospital = TRUE){
    
    ## hospital reference data ----
    # use (local version of) most recent SCIENSANO data (or backup version)
@@ -398,25 +399,29 @@ get_abc_reference_data <- function(ref_period ,
    dim(hosp_ref_data)
    hosp_ref_data          <- hosp_ref_data[hosp_ref_data$sim_date %in% ref_period,]
    
-   if(bool_age){
-      abc_age_cat       <- seq(0,80,10) #TODO: make generic
-      abc_hosp_stat     <- data.table(value      = unlist(hosp_ref_data[,grepl('hospital_admissions_',names(hosp_ref_data))]),
-                                      value_low  = NA,
-                                      value_high = NA,
-                                      date       = rep(hosp_ref_data$sim_date,length(abc_age_cat)),
-                                      age_min    = rep(abc_age_cat,each=nrow(hosp_ref_data)),
-                                      category   = rep(paste0('new_hospital_admissions_age',1:length(abc_age_cat)),each=length(hosp_ref_data$sim_date)),
-                                      bool_orig  = TRUE)
+   if(bool_hospital){
+      if(bool_age){
+         abc_age_cat       <- seq(0,80,10) #TODO: make generic
+         abc_hosp_stat     <- data.table(value      = unlist(hosp_ref_data[,grepl('hospital_admissions_',names(hosp_ref_data))]),
+                                         value_low  = NA,
+                                         value_high = NA,
+                                         date       = rep(hosp_ref_data$sim_date,length(abc_age_cat)),
+                                         age_min    = rep(abc_age_cat,each=nrow(hosp_ref_data)),
+                                         category   = rep(paste0('new_hospital_admissions_age',1:length(abc_age_cat)),each=length(hosp_ref_data$sim_date)),
+                                         bool_orig  = TRUE)
+      } else{
+         abc_hosp_stat     <- data.table(value      = hosp_ref_data$hospital_admissions,
+                                         value_low  = NA,
+                                         value_high = NA,
+                                         date       = hosp_ref_data$sim_date,
+                                         age_min    = NA,
+                                         category   = 'new_hospital_admissions',
+                                         bool_orig  = TRUE)
+      }  
    } else{
-      abc_hosp_stat     <- data.table(value      = hosp_ref_data$hospital_admissions,
-                                      value_low  = NA,
-                                      value_high = NA,
-                                      date       = hosp_ref_data$sim_date,
-                                      age_min    = NA,
-                                      category   = 'new_hospital_admissions',
-                                      bool_orig  = TRUE)
-   }   
-      
+      abc_hosp_stat <- NULL
+   }
+    
    dim(abc_hosp_stat)
    
    ## seroprevalence data ----
@@ -464,14 +469,18 @@ get_abc_reference_data <- function(ref_period ,
                               abc_sero_stat,
                               abc_dtime_stat)
    dim(sum_stat_obs)
-   
-   sero_rep_factor   <- floor(nrow(abc_hosp_stat) / nrow(abc_sero_stat))
-   for(i in 2:sero_rep_factor){
-      sum_stat_obs <- rbind(sum_stat_obs,abc_sero_stat[, bool_orig := FALSE])
+
+   # duplicate serology data to give it the same weight in the reference data
+   if(!is.null(abc_hosp_stat)){
+      sero_rep_factor   <- floor(nrow(abc_hosp_stat) / nrow(abc_sero_stat))
+      for(i in 2:sero_rep_factor){
+         sum_stat_obs <- rbind(sum_stat_obs,abc_sero_stat[, bool_orig := FALSE])
+      }
+      dim(sum_stat_obs); table(sum_stat_obs$bool_orig)
    }
-   dim(sum_stat_obs); table(sum_stat_obs$bool_orig)
    
-   if(!is.null(abc_dtime_stat)){
+   
+   if(!is.null(abc_hosp_stat) && !is.null(abc_dtime_stat)){
       sero_dtime_factor   <- floor(nrow(abc_hosp_stat) / nrow(abc_dtime_stat))
       for(i in 2:sero_dtime_factor){
          sum_stat_obs <- rbind(sum_stat_obs,abc_dtime_stat[,bool_orig := FALSE])
