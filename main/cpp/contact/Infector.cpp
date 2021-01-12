@@ -45,6 +45,30 @@ public:
         }
 };
 
+/// Specialized LOG_POLICY policy LogMode::Incidence.
+template <>
+class LOG_POLICY<EventLogMode::Id::Incidence>
+{
+public:
+        static void Contact(const std::shared_ptr<spdlog::logger>&, const Person*, const Person*, ContactType::Id,
+                            unsigned short int, const double, const double)
+        {
+        }
+
+        // p1: infector & p2:infectee
+        static void Trans(const std::shared_ptr<spdlog::logger>& logger, const Person* p1, const Person* p2,
+                          ContactType::Id type, unsigned short int sim_day, unsigned int id_index_case)
+        {
+                logger->info("[TRAN_M] {} {} {} {} {}",
+							 p2->GetAge(),
+							 sim_day,
+							 p2->GetHealth().GetStartInfectiousness(),
+							 p2->GetHealth().GetStartSymptomatic(),
+							 p2->GetHealth().GetEndSymptomatic()
+							 );
+        }
+};
+
 /// Specialized LOG_POLICY policy LogMode::Transmissions.
 template <>
 class LOG_POLICY<EventLogMode::Id::Transmissions>
@@ -382,6 +406,8 @@ void Infector<LL, TIC, true>::Exec(ContactPool& pool, const AgeContactProfile& p
 //--------------------------------------------------------------------------
 template class Infector<EventLogMode::Id::None, false>;
 template class Infector<EventLogMode::Id::None, true>;
+template class Infector<EventLogMode::Id::Incidence, false>;
+template class Infector<EventLogMode::Id::Incidence, true>;
 template class Infector<EventLogMode::Id::Transmissions, false>;
 template class Infector<EventLogMode::Id::Transmissions, true>;
 template class Infector<EventLogMode::Id::All, false>;

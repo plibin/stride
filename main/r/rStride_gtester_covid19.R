@@ -244,6 +244,7 @@ smd_print("START ABC FUNCTION TEST")
 # get one parameter config, set workdir and save parameter RDS file
 model_param_abc <- exp_design[exp_design$gtester_label %in% c('covid_base'),]
 model_param_abc <- exp_design[1,]
+model_param_abc$event_log_level <- "Incidence"
 setwd(project_dir)
 saveRDS(model_param_abc,'model_param_update.rds')
 
@@ -291,33 +292,36 @@ project_summary$run_time       <- NULL
 project_summary$total_time     <- NULL
 
 # CHECK summary: plot number of cases
-y_lim     <- range(pretty(c(project_summary$num_cases*0.9,project_summary$num_cases*1.1)))
-bplt_mean <- aggregate(num_cases ~ gtester_label,data=project_summary,mean)
-bplt_mean$num_cases <- round(bplt_mean$num_cases)
-par(mar=c(10,4,4,2))
-bplt <- boxplot(num_cases ~ gtester_label,data=project_summary,las=2,ylim=y_lim,xlab='')
-x_ticks_mean <- (1:ncol(bplt$stats))+0.2
-points(x = x_ticks_mean,
-       y = bplt_mean$num_cases,
-       pch = 8,
-       col = 4)
-arrows(x0 = x_ticks_mean,
-       y0 = bplt_mean$num_cases * 0.9,
-       y1 = bplt_mean$num_cases * 1.1,
-       col = 4, lwd = 2,length = 0
-       )
-text(x = 1:ncol(bplt$stats),
-     y = bplt_mean$num_cases*1.1,
-     labels = bplt_mean$num_cases,
-     pos = 3,
-     col=4)
-legend('bottom',
-       c('mean',
-         'mean ± 10%'),
-       pch=c('*','I'),
-       col=4,
-       ncol=2)
-grid()
+plot_final_sizes <- function(project_summary){
+  y_lim     <- range(pretty(c(project_summary$num_cases*0.9,project_summary$num_cases*1.1)))
+  bplt_mean <- aggregate(num_cases ~ gtester_label,data=project_summary,mean)
+  bplt_mean$num_cases <- round(bplt_mean$num_cases)
+  par(mar=c(10,4,4,2))
+  bplt <- boxplot(num_cases ~ gtester_label,data=project_summary,las=2,ylim=y_lim,xlab='')
+  x_ticks_mean <- (1:ncol(bplt$stats))+0.2
+  points(x = x_ticks_mean,
+         y = bplt_mean$num_cases,
+         pch = 8,
+         col = 4)
+  arrows(x0 = x_ticks_mean,
+         y0 = bplt_mean$num_cases * 0.9,
+         y1 = bplt_mean$num_cases * 1.1,
+         col = 4, lwd = 2,length = 0
+  )
+  text(x = 1:ncol(bplt$stats),
+       y = bplt_mean$num_cases*1.1,
+       labels = bplt_mean$num_cases,
+       pos = 3,
+       col=4)
+  legend('bottom',
+         c('mean',
+           'mean ± 10%'),
+         pch=c('*','I'),
+         col=4,
+         ncol=2)
+  grid()
+}
+plot_final_sizes(project_summary)
 
 # load the incidence output
 data_incidence     <- .rstride$load_aggregated_output(project_dir,'data_incidence')
@@ -351,36 +355,34 @@ if(!setequal(project_summary,ref_project_summary)){
     col_changed <- which(colSums(project_summary != ref_project_summary) > 0)
     smd_print('column(s) with changes:', paste(names(col_changed),collapse = ','),WARNING = T)
   } else{
-    smd_print('Summary dimensions changed!',WARNING = T)
-    
+    smd_print(paste(c('Summary dimensions changed:',setdiff(names(project_summary),names(ref_project_summary))),collapse='\n\t\t'),WARNING = T)
   }
   
   # remove new column names
-  project_summary <- project_summary[,names(project_summary) %in% names(ref_project_summary)]
+  select_project_summary <- project_summary[,names(project_summary) %in% names(ref_project_summary)]
   
   # remove redundant exp
-  project_summary <- project_summary[,names(project_summary) %in% names(ref_project_summary)]
+  ref_project_summary <- ref_project_summary[,names(ref_project_summary) %in% names(select_project_summary)]
   
   # get difference
-  diff_summary    <- setdiff(project_summary,ref_project_summary)
-  smd_print(names(diff_summary),WARNING = T)
-  
-  
-  if(length(diff_summary)>1 && all(dim(project_summary) == dim(ref_project_summary))){
-    flag <- rowSums(project_summary[,names(diff_summary)] != ref_project_summary[,names(diff_summary)])>0
-    smd_print('EXP_ID with changes:', paste(unique(project_summary$gtester_label[flag]),collapse = ','))
-    project_summary[flag,names(diff_summary)]
+  diff_summary    <- setdiff(select_project_summary,ref_project_summary)
+  if(length(diff_summary)>1 && all(dim(select_project_summary) == dim(ref_project_summary))){
+    smd_print(names(diff_summary),WARNING = T)
+    
+    flag <- rowSums(select_project_summary[,names(diff_summary)] != ref_project_summary[,names(diff_summary)])>0
+    smd_print('EXP_ID with changes:', paste(unique(select_project_summary$gtester_label[flag]),collapse = ','))
+    select_project_summary[flag,names(diff_summary)]
     ref_project_summary[flag,names(diff_summary)]
     
     #par(mfrow=c(1,2),mar=c(8,4,4,2))
     par(mar=c(8,4,4,2))
-    y_lim <- range(pretty(c(ref_project_summary$num_cases,project_summary$num_cases)))
+    y_lim <- range(pretty(c(ref_project_summary$num_cases,select_project_summary$num_cases)))
     boxplot(num_cases ~ gtester_label,
             data=ref_project_summary,main='REFERENCE',ylim=y_lim, las=2,xlab='');grid()
     boxplot(num_cases ~ gtester_label,
             data=ref_project_summary,main='BOTH',ylim=y_lim, las=2,xlab='');grid()
     boxplot(num_cases ~ gtester_label,
-            data=project_summary,add=T,
+            data=select_project_summary,add=T,
             col=alpha(2,0.4),main='',ylim=y_lim,las=2,xlab='')  ;
     legend('bottomleft',c('reference','new'),fill=c(1,alpha(2,0.4)) ,cex=0.8)
     grid() 
@@ -418,6 +420,7 @@ if(setequal(data_incidence[,names(data_incidence) != 'exp_id'],
       flag <- rowSums(data_incidence[,names(diff_incidence)] != ref_data_incidence[,names(diff_incidence)],na.rm=T)>0
       smd_print('EXP_ID with changes:', paste(unique(data_incidence$exp_id[flag]),collapse = ','))
       # data_incidence[flag,names(diff_incidence)]
+      smd_print('gtester_label with changes:', paste(unique(project_summary$gtester_label[project_summary$exp_id %in% data_incidence$exp_id[flag]]),collapse = ','))
       # ref_data_incidence[flag,names(diff_incidence)]    
       
       # bool_colnames <- names(diff_incidence)[names(diff_incidence) %in% names(ref_data_incidence)]
@@ -451,7 +454,7 @@ if(setequal(rstride_out_abc,ref_rstride_out_abc)){
 } else{
   
   smd_print("rSTRIDE ABC CHANGED!",WARNING = T)
-  stride_diff <- setdiff(rstride_out_abc,rstride_out_abc)
+  stride_diff <- setdiff(rstride_out_abc,ref_rstride_out_abc)
   smd_print(names(diff_summary),WARNING = T)
 }
 
@@ -475,6 +478,11 @@ rrv_repo <- function(){
   saveRDS(data_incidence,file=file.path(stride_repo_dir,'regression_rstride_incidence.rds'))
   saveRDS(data_prevalence,file=file.path(stride_repo_dir,'regression_rstride_prevalence.rds'))
   saveRDS(rstride_out_abc,file=file.path(stride_repo_dir,'regression_rstride_out_abc.rds'))
+  
+  pdf(file=file.path(stride_repo_dir,'regression_rstride_summary.pdf'))
+  plot_final_sizes(project_summary)
+  dev.off()
+  
   smd_print('NEW REFERENCE VALES STORED: IN STRIDE REPOSITORY')
   rrv()
 }

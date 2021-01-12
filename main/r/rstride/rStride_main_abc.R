@@ -70,6 +70,9 @@ run_rStride_abc <- function(abc_function_param,
   # get default config
   config_exp <- create_default_config(config_default_filename, run_tag)
   
+  # set event_log_level to "Incidence"
+  config_exp$event_log_level <- 'Incidence'
+  
   # incorportate experiment-specific parameter values
   model_param_update <- readRDS(file.path('./sim_output',run_tag,'model_param_update.rds'))
   config_exp[names(model_param_update)] <- model_param_update
@@ -92,6 +95,7 @@ run_rStride_abc <- function(abc_function_param,
   config_exp$compliance_delay_workplace <- round(config_exp$compliance_delay_workplace)
   config_exp$compliance_delay_other     <- round(config_exp$compliance_delay_other)
   
+
   ################################## #
   ## RUN                          ####
   ################################## #
@@ -131,8 +135,7 @@ run_rStride_abc <- function(abc_function_param,
                   # get_burden_rdata, 
                   get_transmission_rdata = FALSE, 
                   get_tracing_rdata = FALSE, 
-                  project_dir_exp = config_exp$output_prefix,
-                  bool_transmission_all = FALSE)
+                  project_dir_exp = config_exp$output_prefix)
    
    # get transmission output
    parsed_logfile <- dir(output_prefix,pattern = 'rds',full.names = T)
@@ -149,10 +152,6 @@ run_rStride_abc <- function(abc_function_param,
       sum_stat_obs <- get_abc_reference_data(ref_period)
    }
    
-   sum_stat_obs$date
-   head(sum_stat_obs)
-   table(sum_stat_obs$category)
-   range(sum_stat_obs$date)
    
    # if doubling time is part of the reference output ==> add summary statistic for given period
    if(any(grepl('doubling_time',sum_stat_obs$category))){
@@ -178,7 +177,7 @@ run_rStride_abc <- function(abc_function_param,
    # create model-based summary stats
    abc_out <- vector(length=nrow(sum_stat_obs))
    
-   i_ref <- 50
+   i_ref <- 6
    sum_stat_obs[i_ref,]
    for(i_ref in 1:nrow(sum_stat_obs)){
       

@@ -242,6 +242,10 @@ plot_incidence_data <- function(data_incidence_sel,project_summary,
                                 bool_seroprev_limited = FALSE,
                                 bool_add_doubling_time = FALSE){
 
+  if(nrow(data_incidence_sel)==0){
+    return(NULL)
+  }
+  
   # change figure margins
   if(!bool_only_hospital_adm){
     par(mar=c(3,5,1,5))
@@ -710,17 +714,19 @@ reformat_prevalence_stochastic_model <- function(){
 
 add_polygon_incidence <- function(data_incidence,colname_burden, scen_color){
   
-  hosp_min       <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, min)
-  hosp_max       <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, max)
-  
-  hosp_median    <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, median,na.rm=T)
-  hosp_mean      <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, mean,na.rm=T)
-  
-  newx           <- c(hosp_min$sim_date,rev(hosp_max$sim_date))
-  newy           <- c(hosp_min[,2],rev(hosp_max[,2]))
-  
-  polygon(newx, newy, col = scen_color, border = scen_color)
-  #lines(hosp_median$sim_date,hosp_median$new_hospital_admissions,type='l',lwd=2,col=scen_color)
+  if(colname_burden %in% names(data_incidence)){
+    hosp_min       <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, min)
+    hosp_max       <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, max)
+    
+    hosp_median    <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, median,na.rm=T)
+    hosp_mean      <- aggregate(formula(paste(colname_burden,'~ sim_date')), data=  data_incidence, mean,na.rm=T)
+    
+    newx           <- c(hosp_min$sim_date,rev(hosp_max$sim_date))
+    newy           <- c(hosp_min[,2],rev(hosp_max[,2]))
+    
+    polygon(newx, newy, col = scen_color, border = scen_color)
+  }
+    #lines(hosp_median$sim_date,hosp_median$new_hospital_admissions,type='l',lwd=2,col=scen_color)
   #lines(hosp_mean$sim_date,hosp_mean$new_hospital_admissions,type='l',lwd=2,col=scen_color,lty=3)
 }
 

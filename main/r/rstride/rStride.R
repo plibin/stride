@@ -114,8 +114,7 @@ parse_log_file <- function(config_exp,
                            # get_burden_rdata, 
                            get_transmission_rdata, 
                            get_tracing_rdata, 
-                           project_dir_exp,
-                           bool_transmission_all = TRUE)
+                           project_dir_exp)
 {
   output_prefix <- config_exp$output_prefix
 
@@ -129,8 +128,7 @@ parse_log_file <- function(config_exp,
     
     rstride_out <- parse_event_logfile(event_log_filename,
                                        i_exp,
-                                       get_tracing_rdata,
-                                       bool_transmission_all)
+                                       get_tracing_rdata)
     
     # account for non-symptomatic cases
     flag <- rstride_out$data_transmission$start_symptoms == rstride_out$data_transmission$end_symptoms
@@ -147,23 +145,7 @@ parse_log_file <- function(config_exp,
     # get incidence data
     rstride_out$data_transmission[,infection_date  := as.Date(config_exp$start_date,'%Y-%m-%d') + sim_day]
     rstride_out$data_incidence <- get_transmission_statistics(rstride_out$data_transmission,
-                                                              bool_transmission_all,
                                                               sim_date_range)
-    
-    # # store disease burden and hospital admission data (for additional analysis)
-    # if(get_burden_rdata){
-    #   rstride_out$data_burden <- data.frame(day_infection           = rstride_out$data_transmission$sim_day,
-    #                                         part_age                = rstride_out$data_transmission$part_age,
-    #                                         start_infectiousness    = rstride_out$data_transmission$start_infectiousness,
-    #                                         end_infectiousness      = rstride_out$data_transmission$end_infectiousness,
-    #                                         start_symptoms          = rstride_out$data_transmission$start_symptoms,
-    #                                         end_symptoms            = rstride_out$data_transmission$end_symptoms,
-    #                                         hospital_admission      = rstride_out$data_transmission$hospital_admission_start,
-    #                                         infector_age            = rstride_out$data_transmission$infector_age,
-    #                                         infector_is_symptomatic = rstride_out$data_transmission$infector_is_symptomatic,
-    #                                         date_infection          = as.Date(config_exp$start_date,'%Y-%m-%d') + rstride_out$data_transmission$sim_day,
-    #                                         exp_id                  = rstride_out$data_transmission$exp_id)
-    # }
     
     # if transmission data should not be stored, replace item by NA
     if(!get_transmission_rdata){
@@ -233,7 +215,6 @@ run_rStride <- function(exp_design               = exp_design,
                 # get_burden_rdata         = FALSE,
                 use_date_prefix          = TRUE,
                 get_tracing_rdata        = FALSE,
-                bool_transmission_all    = TRUE,
                 num_parallel_workers     = NA))
     #run_tag <- basename(project_dir)
   }
@@ -510,7 +491,7 @@ add_hospital_admission_time <- function(data_transmission,config_exp){
   # defensive programming for fitting ==>> probability cannot be > 1
   hospital_probability[hospital_probability>1] <- 1
   
-  # # set hospital delay for 4 age groups
+  # # set hospital delay by age group
   hosp_delay_mean      <- parse_hospital_input(config_exp$hospital_mean_delay_age)
   
   # set (uniform) delay  distribution -1, 0, 1
@@ -526,15 +507,16 @@ add_hospital_admission_time <- function(data_transmission,config_exp){
   i_hosp <- 1
   for(i_hosp in 1:length(hospital_probability)){
     #flag_part      <- !is.na(data_transmission$start_symptoms) & data_transmission$age_cat_hosp_num == i_hosp
-    flag_part      <-  age_cat_hosp_num == i_hosp
+    flag_part      <- age_cat_hosp_num == i_hosp
     flag_admission <- as.logical(rbinom(n = nrow(data_transmission),size = 1,prob = hospital_probability[[i_hosp]]))
     flag_hosp      <- flag_part & flag_admission
-    hosp_start     <- as.numeric(data_transmission$start_symptoms[flag_hosp]) + hosp_delay_mean[[i_hosp]] + sample(hosp_delay_variance,sum(flag_hosp),replace = T)
-    data_transmission[flag_hosp, hospital_admission_start := hosp_start]
- 
-    # save age-specific results  
-    data_transmission[flag_hosp ,paste0('hospital_admission_start_age',i_hosp) := hosp_start]
-
+    if(sum(flag_hosp)>0){
+      hosp_start     <- as.numeric(data_transmission$start_symptoms[flag_hosp]) + hosp_delay_mean[[i_hosp]] + sample(hosp_delay_variance,sum(flag_hosp),replace = T)
+      data_transmission[flag_hosp, hospital_admission_start := hosp_start]
+      
+      # save age-specific results  
+      data_transmission[flag_hosp ,paste0('hospital_admission_start_age',i_hosp) := hosp_start]      
+    }
   }
  
   # return
