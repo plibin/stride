@@ -58,7 +58,7 @@ tuple<ptree, unsigned int, double> ScenarioData::Get(string tag)
 		{"r0_12", 23000U},        {"r0_16", 45000U},   {"covid19_base", 82500U}, {"covid19_all", 81000U},
 		{"covid19_daily", 91000U},{"covid19_distancing", 19000U}, {"covid19_age_15min",90000U},
 		{"covid19_householdclusters", 46000U}, {"covid19_tracing",41000U}, {"covid19_tracing_all",39000U},
-		{"covid19_transm", 82500U},{"covid19_transm_gamma", 76200U},
+		{"covid19_transm", 82500U},{"covid19_transm_gamma", 72300U},
 		{"covid19_suscept", 82500U},{"covid19_suscept_age", 82500U},{"covid19_suscept_adapt", 56650U},
 		{"covid19_fitting", 82500U},{"covid19_fitting_adapt", 41100U}};
 
