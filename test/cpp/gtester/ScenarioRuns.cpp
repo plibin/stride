@@ -131,9 +131,9 @@ INSTANTIATE_TEST_CASE_P(covid19, RunsDefault, ValuesIn(tags_covid19));
 
 INSTANTIATE_TEST_CASE_P(influenza, RunsDefault, ValuesIn(tags_influenza));
 
-INSTANTIATE_TEST_CASE_P(measles, RunsDefault, ValuesIn(tags_measles));
+//INSTANTIATE_TEST_CASE_P(measles, RunsDefault, ValuesIn(tags_measles));
 
-INSTANTIATE_TEST_CASE_P(r0, RunsDefault, ValuesIn(tags_r0));
+//INSTANTIATE_TEST_CASE_P(r0, RunsDefault, ValuesIn(tags_r0));
 
 
 } // namespace Tests
