@@ -58,6 +58,13 @@ struct UseOptimizedInfector<EventLogMode::Id::Transmissions>
         static constexpr bool value = true;
 };
 
+/// Indicates whether optimized implementation may be used.
+template <>
+struct UseOptimizedInfector<EventLogMode::Id::Incidence>
+{
+        static constexpr bool value = true;
+};
+
 } // namespace
 
 namespace stride {
@@ -98,6 +105,8 @@ public:
 /// Explicit instantiations in cpp file.
 extern template class Infector<EventLogMode::Id::None, false>;
 extern template class Infector<EventLogMode::Id::None, true>;
+extern template class Infector<EventLogMode::Id::Incidence, false>;
+extern template class Infector<EventLogMode::Id::Incidence, true>;
 extern template class Infector<EventLogMode::Id::Transmissions, false>;
 extern template class Infector<EventLogMode::Id::Transmissions, true>;
 extern template class Infector<EventLogMode::Id::All, false>;

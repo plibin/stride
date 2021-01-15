@@ -167,6 +167,9 @@ save(list=ls(),file=smd_file_path(project_dir,'ABC_stride_all.RData'))
 # ABC_stride <- readRDS(smd_file_path(project_dir,'ABC_stride.rds'))
 # load(file=smd_file_path(project_dir,'ABC_stride_all.RData'))
 
+# or use intermediate output
+#ABC_stride <- load_partial_results_abc(project_dir)
+
 # # re-load rStride
 # source('./bin/rstride/rStride.R')
 
@@ -177,11 +180,14 @@ print(length(ABC_stride$intermediary))
 # plot (final) results
 plot_abc_results(ABC_stride,project_dir)
 
+# plot posterior distribution per iteration
+plot_abc_posterior(ABC_stride,project_dir)
+
 # plot parameter correlation
 plot_abc_correlation(ABC_stride,project_dir)
 
-# intermediate results
-plot_abc_intermediate(ABC_stride,project_dir)
+# # intermediate results
+# plot_abc_intermediate(ABC_stride,project_dir)
 
 
 ## debug

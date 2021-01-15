@@ -22,6 +22,7 @@
 ############################################################################## #
 inspect_transmission_dynamics <- function(project_dir,save_pdf = TRUE)
 {
+  
   # command line message
   smd_print('INSPECT TRANSMISSION DYNAMICS...')
   
@@ -39,6 +40,11 @@ inspect_transmission_dynamics <- function(project_dir,save_pdf = TRUE)
   
   if(length(data_incidence_all) == 1 && is.na(data_incidence_all)){
     smd_print('NO TRANSMISSION DATA AVAILABLE.')
+    return(.rstride$no_return_value())
+  }
+  
+  if(!'sec_cases' %in% names(data_incidence_all)){
+    smd_print('USE OTHER "event_log_level" TO ANALYSE TRANSMISSION DATA.')
     return(.rstride$no_return_value())
   }
   
@@ -227,20 +233,15 @@ inspect_transmission_data <- function(project_dir,save_pdf = TRUE){
 # data_transm_all      <- .rstride$load_aggregated_output(project_dir,'data_transmission')
 # data_transm <- data_transm_all[data_transm_all$exp_id == 1,]
 get_transmission_statistics <- function(data_transm,
-                                        bool_transmission_all = TRUE,
                                         sim_date_range)
 {
   
-  # 1. Get main statistics (and return?)
+  # 1. Get main statistics
   summary_out <- get_main_transmission_statistics(data_transm,sim_date_range)
-  if(!bool_transmission_all){
-    return(summary_out)
-  }
   
-  # 2. Get additional statistics 
-  # check if possible
+  
+  # 2. Get additional statistics (if possible)
   if(!'infector_id' %in% names(data_transm)){
-    smd_print('NOT POSSIBLE TO OBTAIN EXTENDED TRANSMISSION STATISTICS, NOT SUFFICIENT DATA FROM LOG FILE',WARNING = T)
     return(summary_out)
   }
   
