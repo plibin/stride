@@ -38,7 +38,7 @@ using namespace std;
 
 DiseaseSeeder::DiseaseSeeder(const ptree& config, RnMan& rnMan) : m_config(config), m_rn_man(rnMan) {}
 
-void DiseaseSeeder::Seed(std::shared_ptr<Population> pop)
+void DiseaseSeeder::Seed(std::shared_ptr<Population> pop, const TransmissionProfile& transProfile, util::RnHandler& rnHandler)
 {
 
         // --------------------------------------------------------------
@@ -77,10 +77,10 @@ void DiseaseSeeder::Seed(std::shared_ptr<Population> pop)
         // --------------------------------------------------------------
         // Add infected seeds to the population
         // --------------------------------------------------------------
-        ImportInfectedCases(pop, numInfected, 0);
+        ImportInfectedCases(pop, numInfected, 0, transProfile, rnHandler);
 }
 
-void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay)
+void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay, const TransmissionProfile& transProfile, util::RnHandler& rnHandler)
 {
 
         // --------------------------------------------------------------
@@ -97,7 +97,8 @@ void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigne
         while (numInfected > 0) {
                 Person& p = pop->at(static_cast<size_t>(generator()));
                 if (p.GetHealth().IsSusceptible() && (p.GetAge() >= sAgeMin) && (p.GetAge() <= sAgeMax)) {
-                        p.GetHealth().StartInfection(p.GetId(),0);
+                        double rel_inf = transProfile.GetIndividualInfectiousness(rnHandler);
+                        p.GetHealth().StartInfection(p.GetId(),0,rel_inf);
                         numInfected--;
                         if (log_level != "None") {
                                 logger->info("[PRIM] {} {} {} {} {} {} {} {} {} {} {} {} {}",
