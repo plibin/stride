@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace stride {
 
 /// Enumerate the various health states with respect to the infection.
@@ -83,6 +85,8 @@ public:
 
         /// Is this person susceptible?
         bool IsSusceptible() const { return m_status == HealthStatus::Susceptible; }
+        
+        std::string GetVariant() const { return m_variant; }
 
         /// Is this person symptomatic?
         bool IsSymptomatic() const
@@ -113,7 +117,7 @@ public:
 
         /// Start the infection.
         void StartInfection(unsigned int id_index_case, unsigned int id_infector, 
-                double relative_infectiousness);
+                double relative_infectiousness, const std::string &variant);
 
         /// Stop the infection.
         void StopInfection();
@@ -154,6 +158,8 @@ private:
 private:
         unsigned short int m_disease_counter; ///< The disease counter.
         HealthStatus       m_status;          ///< The current status of the person w.r.t. the disease.
+
+        std::string        m_variant;         //< Virus variant 
 
         unsigned short int m_start_infectiousness; ///< Days after infection to become infectious.
         unsigned short int m_start_symptomatic;    ///< Days after infection to become symptomatic.
