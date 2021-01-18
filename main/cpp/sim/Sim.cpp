@@ -141,6 +141,16 @@ void Sim::TimeStep()
             logger->info("[IMPORT-CASES] sim_day={} count={}", simDay, m_calendar->GetNumberOfImportedCases());        	
         }
 
+        if (simDay == 0) {
+            int c = 100;
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay, m_transmission_profile, m_rn_handlers[0], "base");
+            logger->info("[IMPORT-CASES-base] sim_day={} count={}", simDay, c);        	
+        } else if (simDay == 31) {
+            int c = 100;
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay, m_transmission_profile, m_rn_handlers[0], "uk");
+            logger->info("[IMPORT-CASES-uk] sim_day={} count={}", simDay, c);        	
+        }
+
 #pragma omp parallel num_threads(m_num_threads)
         {
         	const auto thread_num = static_cast<unsigned int>(omp_get_thread_num());
