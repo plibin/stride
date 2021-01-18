@@ -46,7 +46,7 @@ public:
         void Seed(std::shared_ptr<Population> pop, const TransmissionProfile& transProfile, util::RnHandler& rnHandler);
 
         /// Import infected cases into the population
-        void ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay, const TransmissionProfile& transProfile, util::RnHandler& rnHandler);
+        void ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay, const TransmissionProfile& transProfile, util::RnHandler& rnHandler, const std::string &variant="");
 
 
 private:

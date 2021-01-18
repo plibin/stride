@@ -81,7 +81,7 @@ void DiseaseSeeder::Seed(std::shared_ptr<Population> pop, const TransmissionProf
         ImportInfectedCases(pop, numInfected, 0, transProfile, rnHandler);
 }
 
-void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay, const TransmissionProfile& transProfile, util::RnHandler& rnHandler)
+void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigned int numInfected, unsigned int simDay, const TransmissionProfile& transProfile, util::RnHandler& rnHandler, const std::string &variant)
 {
 
         // --------------------------------------------------------------
@@ -99,7 +99,7 @@ void DiseaseSeeder::ImportInfectedCases(std::shared_ptr<Population> pop, unsigne
                 Person& p = pop->at(static_cast<size_t>(generator()));
                 if (p.GetHealth().IsSusceptible() && (p.GetAge() >= sAgeMin) && (p.GetAge() <= sAgeMax)) {
                         double rel_inf = transProfile.GetIndividualInfectiousness(rnHandler);
-                        p.GetHealth().StartInfection(p.GetId(),0,rel_inf, "");
+                        p.GetHealth().StartInfection(p.GetId(),0,rel_inf, variant); 
                         numInfected--;
 
                         //TODO: make use of Infector template functions
