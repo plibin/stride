@@ -33,6 +33,9 @@ using namespace stride::util;
 
 void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt)
 {
+    // 0. Variant
+    m_rel_variant_inf_increase        = diseasePt.get<double>("disease.m_rel_variant_inf_increase");
+
     // 1. setup general transmission aspects
     m_rel_transmission_asymptomatic   = diseasePt.get<double>("disease.rel_transmission_asymptomatic", 1);
     m_rel_susceptibility_children     = diseasePt.get<double>("disease.rel_susceptibility_children", 1);
@@ -141,6 +144,8 @@ double TransmissionProfile::GetIndividualSusceptibility(unsigned int age) const 
 double TransmissionProfile::GetProbability(Person* p_infected, Person* p_susceptible) const {
 	// Get individual transmission probability of infector
 	double transmission_probability_infector = p_infected->GetHealth().GetRelativeInfectiousness();
+    if (p_infected->GetHealth().GetVariant() == "UK")
+        transmission_probability_infector = transmission_probability_infector * (1.0 + m_rel_variant_inf_increase); 
 
 	// Adjustment for asymptomatic cases
 	double adjustment_asymptomatic = (p_infected->GetHealth().IsSymptomatic()) ? 1 : m_rel_transmission_asymptomatic;

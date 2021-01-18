@@ -40,6 +40,7 @@ public:
 							m_transmission_probability_distribution("Constant"),
 							m_transmission_probability_distribution_overdispersion(0),
 							m_susceptibility_age(100),
+                            m_rel_variant_inf_increase(1), 
 							m_rel_transmission_asymptomatic(1),
 							m_rel_susceptibility_children(1) {}
 
@@ -69,6 +70,7 @@ private:
 
 	std::vector<double>			m_susceptibility_age;
 
+    double                      m_rel_variant_inf_increase; ///< Relative increase of infectiousness of the variant
     double            			m_rel_transmission_asymptomatic; ///< Relative reduction of transmission for asymptomatic cases
     double             			m_rel_susceptibility_children; ///< Relative reduction of susceptibility for children vs. adults
 
