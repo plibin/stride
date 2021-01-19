@@ -34,7 +34,7 @@ using namespace stride::util;
 void TransmissionProfile::Initialize(const ptree& configPt, const ptree& diseasePt)
 {
     // 0. Variant
-    m_rel_variant_inf_increase        = diseasePt.get<double>("disease.m_rel_variant_inf_increase");
+    m_rel_variant_inf_increase        = configPt.get<double>("run.m_rel_variant_inf_increase");
 
     // 1. setup general transmission aspects
     m_rel_transmission_asymptomatic   = diseasePt.get<double>("disease.rel_transmission_asymptomatic", 1);
