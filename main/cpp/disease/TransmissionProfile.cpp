@@ -144,7 +144,7 @@ double TransmissionProfile::GetIndividualSusceptibility(unsigned int age) const 
 double TransmissionProfile::GetProbability(Person* p_infected, Person* p_susceptible) const {
 	// Get individual transmission probability of infector
 	double transmission_probability_infector = p_infected->GetHealth().GetRelativeInfectiousness();
-    if (p_infected->GetHealth().GetVariant() == "UK")
+    if (p_infected->GetHealth().GetVariant() == "uk")
         transmission_probability_infector = transmission_probability_infector * (1.0 + m_rel_variant_inf_increase); 
 
 	// Adjustment for asymptomatic cases
