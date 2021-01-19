@@ -143,11 +143,11 @@ void Sim::TimeStep()
 
         if (simDay == 0) {
             int c = 100;
-        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay, m_transmission_profile, m_rn_handlers[0], "base");
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, c, simDay, m_transmission_profile, m_rn_handlers[0], "base");
             logger->info("[IMPORT-CASES-base] sim_day={} count={}", simDay, c);        	
         } else if (simDay == 31) {
             int c = 100;
-        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, m_calendar->GetNumberOfImportedCases(), simDay, m_transmission_profile, m_rn_handlers[0], "uk");
+        	DiseaseSeeder(m_config, m_rn_man).ImportInfectedCases(m_population, c, simDay, m_transmission_profile, m_rn_handlers[0], "uk");
             logger->info("[IMPORT-CASES-uk] sim_day={} count={}", simDay, c);        	
         }
 
