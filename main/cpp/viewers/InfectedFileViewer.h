@@ -44,6 +44,8 @@ public:
 private:
         const std::string&         m_output_prefix;
         std::vector<unsigned int>  m_infected;
+        std::vector<unsigned int>  m_infected_base;
+        std::vector<unsigned int>  m_infected_uk;
         std::vector<unsigned int>  m_exposed;
         std::vector<unsigned int>  m_infectious;
         std::vector<unsigned int>  m_symptomatic;

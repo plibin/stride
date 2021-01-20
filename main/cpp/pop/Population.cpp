@@ -117,6 +117,17 @@ unsigned int Population::CountInfectedCases() const
         return total;
 }
 
+unsigned int Population::CountInfectedCasesPerVariant(const std::string& variant) const
+{
+        unsigned int total{0U};
+        for (const auto& p : *this) {
+                const auto& h = p.GetHealth();
+                if (p.GetHealth().GetVariant() == variant)
+                    total += h.IsInfected();
+        }
+        return total;
+}
+
 unsigned int Population::CountExposedCases() const
 {
         unsigned int total{0U};

@@ -31,7 +31,7 @@ namespace stride {
 namespace viewers {
 
 InfectedFileViewer::InfectedFileViewer(std::shared_ptr<SimRunner> runner, const std::string& output_prefix)
-            : m_output_prefix(output_prefix), m_infected(), m_exposed(), m_infectious(), m_symptomatic(), m_infected_total(),
+            : m_output_prefix(output_prefix), m_infected(), m_infected_base(), m_infected_uk(), m_exposed(), m_infectious(), m_symptomatic(), m_infected_total(),
 			  m_runner(std::move(runner))
         {
         }
@@ -45,6 +45,8 @@ void InfectedFileViewer::Update(const sim_event::Id id)
         case Id::Stepped: {
                 const auto pop = m_runner->GetSim()->GetPopulation();
                 m_infected.push_back(pop->CountInfectedCases());
+                m_infected_base.push_back(pop->CountInfectedCasesPerVariant("base"));
+                m_infected_uk.push_back(pop->CountInfectedCasesPerVariant("uk"));
                 m_exposed.push_back(pop->CountExposedCases());
                 m_infectious.push_back(pop->CountInfectiousCases());
                 m_symptomatic.push_back(pop->CountSymptomaticCases());
@@ -54,6 +56,12 @@ void InfectedFileViewer::Update(const sim_event::Id id)
         case Id::Finished: {
         		output::InfectedFile infected_file(m_output_prefix, "infected");
         		infected_file.Print(m_infected);
+        		
+                output::InfectedFile infected_file_base(m_output_prefix, "infected_base");
+        		infected_file_base.Print(m_infected_base);
+                
+                output::InfectedFile infected_file_uk(m_output_prefix, "infected_uk");
+        		infected_file_uk.Print(m_infected_uk);
 
         		output::InfectedFile exposed_file(m_output_prefix, "exposed");
         		exposed_file.Print(m_exposed);

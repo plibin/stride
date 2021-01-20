@@ -64,6 +64,9 @@ public:
         /// Get the current number of infected cases.
         unsigned int CountInfectedCases() const;
 
+        /// Get the current number of infected cases, per variant.
+        unsigned int CountInfectedCasesPerVariant(const std::string& variant) const;
+
         /// Get the current number of exposed cases.
         unsigned int CountExposedCases() const;
 
