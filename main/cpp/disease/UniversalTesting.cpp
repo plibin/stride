@@ -221,7 +221,7 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
           bool isolation_compliance = rnHandler.Binomial(m_unitest_isolation_compliance);
           if (isolation_compliance) {
             for (const auto& indiv : household) {
-                unsigned int start = simDay + 1 + m_unitest_isolation_delay;
+                unsigned int start = simDay + m_unitest_isolation_delay;
                 indiv->Isolate(simDay, start, start + 7);
                 logger->info("[UNITEST-ISOLATE] pool_id={} household_id={} indiv_id={} infected?={} isolation_delay={} sim_day={}",
                 //logger->info("[UNITEST-ISOLATE] {} {} {} {} {} {}",
@@ -231,6 +231,38 @@ void UniversalTesting::PerformUniversalTesting(std::shared_ptr<Population> pop,
                                                    indiv->GetHealth().IsInfected(),
                                                    m_unitest_isolation_delay,
                                                    simDay);
+            }
+          }
+        } else if (m_unitest_isolation_strategy == "isolate-indiv-household") {
+          bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
+          bool isolate_household = false;
+          for (Person* indiv : household) {
+            auto h = indiv->GetHealth();
+            if (h.IsInfected() && h.IsPcrDetectable(m_unitest_detectable_delay)) {
+              bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
+              if (pcr_test_positive) {
+                isolate_household = true;
+              }
+            }
+          }
+          if (isolate_household && isolation_compliance) {
+            for (Person* indiv : household) {
+                unsigned int start = simDay + m_unitest_isolation_delay;
+                indiv->Isolate(simDay, start, start + 7);
+            }
+          }
+        } else if (m_unitest_isolation_strategy == "isolate-indiv") {
+          bool isolation_compliance = Bernoulli(cHandler, m_unitest_isolation_compliance);
+          for (Person* indiv : household) {
+            auto h = indiv->GetHealth();
+            if (h.IsInfected() && h.IsPcrDetectable(m_unitest_detectable_delay)) {
+              bool pcr_test_positive = Bernoulli(cHandler, 1-m_unitest_fnr);
+              if (pcr_test_positive) {
+                if (isolation_compliance) {
+                  unsigned int start = simDay + m_unitest_isolation_delay;
+                  indiv->Isolate(simDay, start, start + 7);
+                }
+              }
             }
           }
         } else if (m_unitest_isolation_strategy == "trace") {
