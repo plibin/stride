@@ -117,7 +117,7 @@ void Sim::TimeStep()
 		}
 
 		// get distancing at school
-		double school_distancing_factor = (m_day_of_workplace_distancing > 0) ? m_cnt_reduction_school_exit : 0 ;
+		double school_distancing_factor = m_cnt_reduction_school_exit;
 
 		// To be used in update of population & contact pools.
         Population& population    = *m_population;
